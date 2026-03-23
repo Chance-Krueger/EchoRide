@@ -1,0 +1,1 @@
+# Maps direction → vibration pattern

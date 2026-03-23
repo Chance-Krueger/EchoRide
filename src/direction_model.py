@@ -1,0 +1,1 @@
+# Core algorithm that determines direction
