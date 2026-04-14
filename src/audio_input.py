@@ -42,20 +42,33 @@ def extract_label_from_folder(category_path):
     return Path(category_path).name
 
 # Main function in file that combines all the smaller functions and creates the dataset list.
-def build_file_index():
-    pass
+def build_file_index(raw_data_path):
+    
+    dataset = []
 
-# Before loading actual audio, it is really useful to print a basic summary.
+    category_folders = get_category_folders(raw_data_path)
+
+    for category_folder in category_folders:
+        label = extract_label_from_folder(category_folder)
+        wav_files = get_wav_files_in_category(category_folder)
+
+        for wav_file in wav_files:
+            entry = {
+                "file_path": wav_file,
+                "label" : label
+            }
+            dataset.append(entry)
+
+    return dataset
+
+# Print a basic summary.
 def summarize_dataset():
     pass
 
 def main():
 
     data_dir = get_raw_data_path()
-    cat_folders = get_category_folders(data_dir)
-    print(get_wav_files_in_category(cat_folders[0]))
-    print()
-    print(extract_label_from_folder(cat_folders[0]))
+    print(build_file_index(data_dir))
 
 
 main()
