@@ -18,8 +18,15 @@ def get_raw_data_path():
 
 
 # This function finds the class names from folder structure.
-def get_category_folders():
-    pass
+def get_category_folders(raw_data_path):
+    category_folders = []
+
+    for path in Path(raw_data_path).rglob("*"):
+        if path.is_dir():
+            # NEED TO EDIT PATH TO JUST CATEGORY
+            category_folders.append(path.name)
+
+    return category_folders
 
 # Given one category folder, find all .wav files in it.
 def get_wav_files_in_category():
@@ -38,6 +45,6 @@ def summarize_dataset():
     pass
 
 def main():
-    print(get_raw_data_path())
+    print(get_category_folders(get_raw_data_path()))
 
 main()
