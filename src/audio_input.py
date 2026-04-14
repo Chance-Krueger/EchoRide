@@ -23,18 +23,23 @@ def get_category_folders(raw_data_path):
 
     for path in Path(raw_data_path).rglob("*"):
         if path.is_dir():
-            # NEED TO EDIT PATH TO JUST CATEGORY
-            category_folders.append(path.name)
+            category_folders.append(path)
 
     return category_folders
 
 # Given one category folder, find all .wav files in it.
-def get_wav_files_in_category():
-    pass
+def get_wav_files_in_category(category_path):
+    wav_files = []
+
+    for file in Path(category_path).iterdir():
+        if (Path(file).is_file()) and (Path(file).suffix == ".wav"):
+            wav_files.append(file)
+
+    return wav_files
 
 # This turns a category folder into a label.
-def extract_label_from_folder():
-    pass
+def extract_label_from_folder(category_path):
+    return Path(category_path).name
 
 # Main function in file that combines all the smaller functions and creates the dataset list.
 def build_file_index():
@@ -45,6 +50,12 @@ def summarize_dataset():
     pass
 
 def main():
-    print(get_category_folders(get_raw_data_path()))
+
+    data_dir = get_raw_data_path()
+    cat_folders = get_category_folders(data_dir)
+    print(get_wav_files_in_category(cat_folders[0]))
+    print()
+    print(extract_label_from_folder(cat_folders[0]))
+
 
 main()
