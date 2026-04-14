@@ -2,17 +2,20 @@ from pathlib import Path
 
 ### Handles loading audio files or streaming audio
 
+BASE_DIR = Path(__file__).resolve().parent.parent
+DATA_FOLDER = BASE_DIR / "data"
+
 # This function decides where raw audio lives.
 def get_raw_data_path():
 
-    raw_path = Path("")
+    raw_path = Path(DATA_FOLDER / "raw")
 
     if raw_path.is_dir():
         return raw_path
     else:
-        raise f"The path {raw_path} does not exist in the directory"
+        raise FileNotFoundError(f"The path {raw_path} does not exist in the directory")
 
-    pass
+
 
 # This function finds the class names from folder structure.
 def get_category_folders():
@@ -33,3 +36,8 @@ def build_file_index():
 # Before loading actual audio, it is really useful to print a basic summary.
 def summarize_dataset():
     pass
+
+def main():
+    print(get_raw_data_path())
+
+main()
