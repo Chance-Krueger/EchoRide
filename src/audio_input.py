@@ -21,7 +21,7 @@ def get_raw_data_path():
 def get_category_folders(raw_data_path):
     category_folders = []
 
-    for path in Path(raw_data_path).rglob("*"):
+    for path in raw_data_path.iterdir():
         if path.is_dir():
             category_folders.append(path)
 
@@ -32,7 +32,7 @@ def get_wav_files_in_category(category_path):
     wav_files = []
 
     for file in Path(category_path).iterdir():
-        if (Path(file).is_file()) and (Path(file).suffix == ".wav"):
+        if (Path(file).is_file()) and (Path(file).suffix.lower() == ".wav"):
             wav_files.append(file)
 
     return wav_files
@@ -64,9 +64,7 @@ def build_file_index(raw_data_path):
 # Print a basic summary.
 def summarize_dataset(dataset):
     
-    print(len(dataset))
-
-    # count files per label
+    print(f"Total files: {len(dataset)}")
 
     label_dict = {}
 
@@ -77,8 +75,7 @@ def summarize_dataset(dataset):
             label_dict[data["label"]] = 1
 
     for key, value in label_dict.items():
-        print(key, value)
-
+        print(f"{key}: {value}")
 
 def main():
 
@@ -86,4 +83,5 @@ def main():
     summarize_dataset(build_file_index(data_dir))
 
 
-main()
+if __name__ == "__main__":
+    main()
