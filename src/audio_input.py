@@ -62,13 +62,28 @@ def build_file_index(raw_data_path):
     return dataset
 
 # Print a basic summary.
-def summarize_dataset():
-    pass
+def summarize_dataset(dataset):
+    
+    print(len(dataset))
+
+    # count files per label
+
+    label_dict = {}
+
+    for data in dataset:
+        if data["label"] in label_dict:
+            label_dict[data["label"]] += 1
+        else:
+            label_dict[data["label"]] = 1
+
+    for key, value in label_dict.items():
+        print(key, value)
+
 
 def main():
 
     data_dir = get_raw_data_path()
-    print(build_file_index(data_dir))
+    summarize_dataset(build_file_index(data_dir))
 
 
 main()
