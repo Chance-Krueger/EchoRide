@@ -31,8 +31,19 @@ def extract_mfcc_features(audio, sample_rate, n_mfcc=13):
 
 
 # Compute RMS energy and summarize it
-def extract_rms_feature():
-    pass
+def extract_rms_feature(audio, sample_rate=16000):
+    # Compute RMS over frames
+    rms = librosa.feature.rms(
+        y=audio,
+        frame_length=1024,
+        hop_length=256
+    )[0]  # shape: (time_frames,)
+
+    # Mean and std across time
+    rms_mean = np.mean(rms)
+    rms_std = np.std(rms)
+
+    return np.array([rms_mean, rms_std], dtype=np.float32)
 
 # Summarize where the energy sits in the frequency spectrum.
 
@@ -113,6 +124,19 @@ def main():
 
         # Optional: visualize
         # visualize_audio_sample(file_path)
+
+    processed_audio, sr = preprocess_audio(
+        file_path="/Users/chancekrueger/Documents/GitHub/EchoRide/data/raw/FrontPass/FrontPass_L2R_HeavyWind.wav",
+        target_sr=16000,
+        target_duration=2.0,
+        silence_threshold=500
+    )
+
+    rms_feat = extract_rms_feature(processed_audio, sr)
+
+    print("RMS feature vector:", rms_feat)
+    print("Shape:", rms_feat.shape)
+    
 
     print("\n=== DONE ===")
 
