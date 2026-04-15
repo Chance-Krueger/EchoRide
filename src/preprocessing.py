@@ -85,8 +85,24 @@ def normalize_audio(audio):
 
 
 # Force every clip to have the same duration.
-def pad_or_crop_audio():
-    pass
+def pad_or_crop_audio(audio, sample_rate, target_duration):
+    target_length = int(target_duration * sample_rate)
+    current_length = len(audio)
+
+    # If shorter → pad with zeros at the end
+    if current_length < target_length:
+        amount_to_pad = target_length - current_length
+        padded_audio = np.pad(audio, (0, amount_to_pad), mode='constant')
+        return padded_audio
+
+    # If longer → crop to target length
+    if current_length > target_length:
+        cropped_audio = audio[:target_length]
+        return cropped_audio
+
+    # Already correct length
+    return audio
+
 
 # Apply the full standardization pipeline to one clip.
 
@@ -142,6 +158,13 @@ def main():
     print("Min amplitude:", np.min(normalized))
     print("dtype:", normalized.dtype)
 
+    # Pad or crop to 2 seconds for testing
+    target_duration = 2.0
+    final_audio = pad_or_crop_audio(normalized, new_sr, target_duration)
+
+    print("\n=== AFTER PAD/CROP ===")
+    print("Num samples:", len(final_audio))
+    print("Duration:", len(final_audio) / new_sr)
 
 
 main()
