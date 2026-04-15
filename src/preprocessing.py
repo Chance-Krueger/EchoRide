@@ -71,8 +71,17 @@ def trim_silence(audio, threshold):
 
 
 # Put all clips on a similar amplitude scale.
-def normalize_audio():
-    pass
+def normalize_audio(audio):
+    # Convert to float so division behaves correctly
+    audio = audio.astype(np.float32)
+
+    max_val = np.max(np.abs(audio))
+
+    if max_val == 0:
+        return audio
+
+    normalized_audio = audio / max_val
+    return normalized_audio
 
 
 # Force every clip to have the same duration.
@@ -125,6 +134,14 @@ def main():
         "num_samples": len(resampled_audio),
         "duration": len(resampled_audio) / new_sr
     })
+
+    normalized = normalize_audio(resampled_audio)
+
+    print("\n=== AFTER NORMALIZATION ===")
+    print("Max amplitude:", np.max(np.abs(normalized)))
+    print("Min amplitude:", np.min(normalized))
+    print("dtype:", normalized.dtype)
+
 
 
 main()
