@@ -2,8 +2,16 @@ import numpy as np
 import matplotlib.pyplot as plt
 import librosa
 import librosa.display
+from pathlib import Path
+# from preprocessing import load_audio_file, preprocess_audio
 
 # Be able to take one audio file and visually inspect
+
+
+BASE_DIR = Path(__file__).resolve().parent.parent
+DATA_FOLDER = BASE_DIR / "data"
+RAW_FOLDER = DATA_FOLDER / "raw"
+
 
 # Show amplitude over time for one waveform.
 def plot_waveform(audio, sample_rate, title="Waveform"):
@@ -76,40 +84,3 @@ def plot_mel_spectrogram(audio, sample_rate, title="Mel Spectrogram"):
     plt.title(title)
     plt.tight_layout()
     plt.show()
-
-
-# Visually compare raw and processed audio.
-def compare_waveforms(raw_audio, raw_sr, processed_audio, processed_sr, title="Waveform Comparison"):
-    # Time axes
-    raw_time = np.linspace(0, len(raw_audio) / raw_sr, len(raw_audio))
-    processed_time = np.linspace(0, len(processed_audio) / processed_sr, len(processed_audio))
-
-    # Create figure with two panels
-    plt.figure(figsize=(12, 6))
-
-    # --- Top panel: raw waveform ---
-    plt.subplot(2, 1, 1)
-    plt.plot(raw_time, raw_audio, linewidth=1)
-    plt.title(f"{title} — Raw Audio")
-    plt.xlabel("Time (seconds)")
-    plt.ylabel("Amplitude")
-
-    # --- Bottom panel: processed waveform ---
-    plt.subplot(2, 1, 2)
-    plt.plot(processed_time, processed_audio, linewidth=1, color="orange")
-    plt.title(f"{title} — Processed Audio")
-    plt.xlabel("Time (seconds)")
-    plt.ylabel("Amplitude")
-
-    plt.tight_layout()
-    plt.show()
-
-
-# Visually compare raw and processed frequency content.
-def compare_spectrograms():
-    pass
-
-
-# main pipeline helper for a single file.
-def visualize_audio_sample():
-    pass

@@ -4,7 +4,7 @@ import soundfile as sf
 import librosa
 import numpy as np
 
-from visualization import plot_waveform, plot_spectrogram, plot_mel_spectrogram, compare_waveforms
+from visualization import plot_waveform, plot_spectrogram, plot_mel_spectrogram
 
 
 
@@ -126,6 +126,7 @@ def pad_or_crop_audio(audio, sample_rate, target_duration):
 
 # Apply the full standardization pipeline to one clip.
 def preprocess_audio(file_path, target_sr, target_duration, silence_threshold=500):
+
     # 1. Load
     audio, sample_rate = load_audio_file(file_path)
 
@@ -143,6 +144,8 @@ def preprocess_audio(file_path, target_sr, target_duration, silence_threshold=50
 
     # 6. Pad or crop to fixed duration
     audio = pad_or_crop_audio(audio, sample_rate, target_duration)
+
+    print("After trim_silence:", len(audio), "samples")
 
     return audio, sample_rate
 
@@ -188,6 +191,8 @@ def main():
 
     raw_audio, raw_sr = load_audio_file(file_path)
 
+    print("Raw audio length:", len(raw_audio))
+
 
     print("=== FINAL OUTPUT ===")
     print("Sample rate:", sr)
@@ -199,7 +204,6 @@ def main():
     plot_waveform(processed_audio, sr, "Processed Waveform")
     plot_spectrogram(processed_audio, sr, "Processed Audio Spectrogram")
     plot_mel_spectrogram(processed_audio, sr, "Processed Mel Spectrogram")
-    compare_waveforms(raw_audio, raw_sr, processed_audio, sr, "FrontPass HeavyWind")
 
 
 
