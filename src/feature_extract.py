@@ -1,7 +1,7 @@
 import numpy as np
 import librosa
 
-from preprocessing import load_audio_file, preprocess_audio # TESTING
+from preprocessing import load_audio_file, preprocess_audio, preprocess_dataset # TESTING
 
 
 # Extracts features needed for direction detection
@@ -132,8 +132,26 @@ def extract_features_from_audio(audio, sample_rate):
     return full_vector
 
 # Take the processed dataset and convert it into model-ready data
-def extract_features_from_dataset():
-    pass
+def extract_features_from_dataset(processed_dataset):
+    X = []
+    y = []
+
+    for entry in processed_dataset:
+        audio = entry["audio"]
+        sample_rate = entry["sample_rate"]
+        label = entry["label"]
+
+        # Extract the full 36‑dimensional feature vector
+        feature_vector = extract_features_from_audio(audio, sample_rate)
+
+        X.append(feature_vector)
+        y.append(label)
+
+    # Convert to NumPy arrays for ML models
+    X = np.array(X, dtype=np.float32)
+    y = np.array(y)
+
+    return X, y
 
 
 def main():
@@ -228,6 +246,24 @@ def main():
     print("Sample:", vec[:10])
 
 
+    # 1. Preprocess all audio files
+    processed_dataset = preprocess_dataset(
+        dataset,
+        target_sr=16000,
+        target_duration=2.0,
+        silence_threshold=500
+    )
+    # 2. Extract features + labels
+    X, y = extract_features_from_dataset(processed_dataset)
+
+    print("X shape:", X.shape)
+    print("y shape:", y.shape)
+
+
+    print("X shape:", X.shape)
+    print("y shape:", y.shape)
+    print("First feature vector:", X[0])
+    print("First label:", y[0])
 
 
     
@@ -235,4 +271,5 @@ def main():
     print("\n=== DONE ===")
 
 
-main()
+if __name__ == "__main__":
+    main()
