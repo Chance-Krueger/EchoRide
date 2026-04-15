@@ -105,10 +105,27 @@ def pad_or_crop_audio(audio, sample_rate, target_duration):
 
 
 # Apply the full standardization pipeline to one clip.
+def preprocess_audio(file_path, target_sr, target_duration, silence_threshold=500):
+    # 1. Load
+    audio, sample_rate = load_audio_file(file_path)
 
+    # 2. Convert to mono
+    audio = convert_to_mono(audio)
 
-def preprocess_audio():
-    pass
+    # 3. Trim silence BEFORE resampling (threshold is based on original amplitude)
+    audio = trim_silence(audio, threshold=silence_threshold)
+
+    # 4. Resample
+    audio, sample_rate = resample_audio(audio, sample_rate, target_sr, file_path)
+
+    # 5. Normalize to [-1, 1]
+    audio = normalize_audio(audio)
+
+    # 6. Pad or crop to fixed duration
+    audio = pad_or_crop_audio(audio, sample_rate, target_duration)
+
+    return audio, sample_rate
+
 
 
 # Apply preprocessing to every file in dataset index.
