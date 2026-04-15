@@ -1,3 +1,4 @@
+from pathlib import Path
 from scipy.io import wavfile
 import soundfile as sf
 import librosa
@@ -9,6 +10,14 @@ import numpy as np
 
 # Read one .wav file and return the actual waveform plus its sample rate.
 def load_audio_file(file_path):
+    file_path = Path(file_path)
+
+    if not file_path.exists():
+        raise FileNotFoundError(f"Audio file not found: {file_path}")
+
+    if file_path.suffix.lower() != ".wav":
+        raise ValueError(f"Expected a .wav file, got: {file_path}")
+
     sample_rate, audio = wavfile.read(file_path)
     return audio, sample_rate
 
@@ -17,20 +26,29 @@ def load_audio_file(file_path):
 def inspect_audio_properties(audio, sample_rate, file_path):
     num_samples = len(audio)
     duration = num_samples / sample_rate
-    info = sf.info(file_path)
 
-    return {
+    if audio.ndim == 1:
+        channels = 1
+    else:
+        channels = audio.shape[1]
+
+    info = {
         "sample_rate": sample_rate,
         "num_samples": num_samples,
         "duration": duration,
-        "channels": info.channels
+        "channels": channels,
+        "dtype": str(audio.dtype),
     }
 
+    return info
+
 # Make every clip use the same sample rate.
-def resample_audio(audio, original_sr, target_sr, file_path):
+def resample_audio(audio, original_sr, target_sr):
     if original_sr == target_sr:
         return audio, original_sr
     
+    audio = audio.astype(np.float32)
+
     resampled_audio = librosa.resample(
         y=audio,
         orig_sr=original_sr,
@@ -38,6 +56,7 @@ def resample_audio(audio, original_sr, target_sr, file_path):
     )
 
     return resampled_audio, target_sr
+
 
 
 # Make sure every clip has one channel.
@@ -66,8 +85,8 @@ def trim_silence(audio, threshold):
     start = above_thresh[0]
     end = above_thresh[-1] + 1  # include last sample
 
-    trimmed_audio = audio[start:end]
-    return trimmed_audio
+    # trimmed_audio
+    return audio[start:end]
 
 
 # Put all clips on a similar amplitude scale.
@@ -80,8 +99,8 @@ def normalize_audio(audio):
     if max_val == 0:
         return audio
 
-    normalized_audio = audio / max_val
-    return normalized_audio
+    # normalized_audio
+    return audio / max_val
 
 
 # Force every clip to have the same duration.
@@ -92,13 +111,11 @@ def pad_or_crop_audio(audio, sample_rate, target_duration):
     # If shorter → pad with zeros at the end
     if current_length < target_length:
         amount_to_pad = target_length - current_length
-        padded_audio = np.pad(audio, (0, amount_to_pad), mode='constant')
-        return padded_audio
+        return np.pad(audio, (0, amount_to_pad), mode='constant') # padded_audio
 
     # If longer → crop to target length
     if current_length > target_length:
-        cropped_audio = audio[:target_length]
-        return cropped_audio
+        return audio[:target_length] # cropped_audio
 
     # Already correct length
     return audio
@@ -116,7 +133,7 @@ def preprocess_audio(file_path, target_sr, target_duration, silence_threshold=50
     audio = trim_silence(audio, threshold=silence_threshold)
 
     # 4. Resample
-    audio, sample_rate = resample_audio(audio, sample_rate, target_sr, file_path)
+    audio, sample_rate = resample_audio(audio, sample_rate, target_sr)
 
     # 5. Normalize to [-1, 1]
     audio = normalize_audio(audio)
@@ -129,59 +146,64 @@ def preprocess_audio(file_path, target_sr, target_duration, silence_threshold=50
 
 
 # Apply preprocessing to every file in dataset index.
-def preprocess_dataset():
-    pass
+def preprocess_dataset(dataset, target_sr, target_duration, silence_threshold=500):
+    processed_dataset = []
+
+    for entry in dataset:
+        file_path = entry["file_path"]
+        label = entry["label"]
+
+        processed_audio, processed_sr = preprocess_audio(
+            file_path=file_path,
+            target_sr=target_sr,
+            target_duration=target_duration,
+            silence_threshold=silence_threshold
+        )
+
+        processed_entry = {
+            "file_path": file_path,
+            "label": label,
+            "audio": processed_audio,
+            "sample_rate": processed_sr
+        }
+
+        processed_dataset.append(processed_entry)
+
+    return processed_dataset
+
 
 
 def main():
     file_path = "/Users/chancekrueger/Documents/GitHub/EchoRide/data/raw/FrontPass/FrontPass_L2R_HeavyWind.wav"
 
-    # Load audio
-    audio, sample_rate = load_audio_file(file_path)
+    processed_audio, sr = preprocess_audio(
+        file_path=file_path,
+        target_sr=16000,
+        target_duration=2.0,   # 2 seconds
+        silence_threshold=500
+    )
 
-    print("=== ORIGINAL ===")
-    print(inspect_audio_properties(audio, sample_rate, file_path))
-    print("Shape before mono:", audio.shape)
+    print("=== FINAL OUTPUT ===")
+    print("Sample rate:", sr)
+    print("Num samples:", len(processed_audio))
+    print("Duration:", len(processed_audio) / sr)
+    print("Max amplitude:", np.max(np.abs(processed_audio)))
 
-    # Convert to mono
-    if audio.ndim > 1:
-        audio = audio.mean(axis=1)
+    dataset = [
+        {"file_path": "data/raw/FrontPass/FrontPass_L2R_HeavyWind.wav", "label": "FrontPass"},
+        {"file_path": "data/raw/FrontPass/FrontPass_L2R_NC_Engine.wav", "label": "FrontPass"},
+    ]
 
-    print("\n=== AFTER MONO ===")
-    print("Num samples:", len(audio))
+    processed = preprocess_dataset(
+        dataset,
+        target_sr=16000,
+        target_duration=2.0
+    )
 
-    # Trim silence
-    trimmed = trim_silence(audio, threshold=500)
-
-    print("\n=== AFTER TRIM SILENCE ===")
-    print("Num samples:", len(trimmed))
-    print("Duration:", len(trimmed) / sample_rate)
-
-    # Resample
-    target_sr = 16000
-    resampled_audio, new_sr = resample_audio(trimmed, sample_rate, target_sr, file_path)
-
-    print("\n=== AFTER RESAMPLING ===")
-    print({
-        "sample_rate": new_sr,
-        "num_samples": len(resampled_audio),
-        "duration": len(resampled_audio) / new_sr
-    })
-
-    normalized = normalize_audio(resampled_audio)
-
-    print("\n=== AFTER NORMALIZATION ===")
-    print("Max amplitude:", np.max(np.abs(normalized)))
-    print("Min amplitude:", np.min(normalized))
-    print("dtype:", normalized.dtype)
-
-    # Pad or crop to 2 seconds for testing
-    target_duration = 2.0
-    final_audio = pad_or_crop_audio(normalized, new_sr, target_duration)
-
-    print("\n=== AFTER PAD/CROP ===")
-    print("Num samples:", len(final_audio))
-    print("Duration:", len(final_audio) / new_sr)
+    print("\n=== DATASET RESULTS ===")
+    for entry in processed:
+        print(entry["file_path"], len(entry["audio"]), entry["sample_rate"])
 
 
-main()
+if __name__ == "__main__":
+    main()
