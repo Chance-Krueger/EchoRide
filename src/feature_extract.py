@@ -77,10 +77,20 @@ def extract_zero_crossing_feature(audio):
     return np.array([zcr_mean, zcr_std], dtype=np.float32)
 
 # Summarize the spread of frequencies
+def extract_spectral_bandwidth_feature(audio, sample_rate):
+    # Compute spectral bandwidth → shape (1, time_frames)
+    bandwidth = librosa.feature.spectral_bandwidth(
+        y=audio,
+        sr=sample_rate,
+        n_fft=1024,
+        hop_length=256
+    )[0]  # flatten to (time_frames,)
 
+    # Mean and std across time
+    bandwidth_mean = np.mean(bandwidth)
+    bandwidth_std = np.std(bandwidth)
 
-def extract_spectral_bandwidth_feature():
-    pass
+    return np.array([bandwidth_mean, bandwidth_std], dtype=np.float32)
 
 # Summarize the upper-end frequency boundary of most energy
 
@@ -171,6 +181,11 @@ def main():
     zcr_feat = extract_zero_crossing_feature(processed_audio)
     print("ZCR feature vector:", zcr_feat)
     print("Shape:", zcr_feat.shape)
+
+    bandwidth_feat = extract_spectral_bandwidth_feature(processed_audio, sr)
+    print("Spectral bandwidth feature:", bandwidth_feat)
+    print("Shape:", bandwidth_feat.shape)
+
 
     
 
