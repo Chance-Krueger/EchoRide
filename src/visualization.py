@@ -1,5 +1,7 @@
 import numpy as np
 import matplotlib.pyplot as plt
+import librosa
+import librosa.display
 
 # Be able to take one audio file and visually inspect
 
@@ -19,8 +21,30 @@ def plot_waveform(audio, sample_rate, title="Waveform"):
     plt.show()
 
 # Show how frequency changes over time.
-def plot_spectrogram():
-    pass
+def plot_spectrogram(audio, sample_rate, title="Spectrogram"):
+    # Compute STFT
+    stft = librosa.stft(audio, n_fft=1024, hop_length=256)
+    
+    # Magnitude
+    magnitude = np.abs(stft)
+    
+    # Convert to decibels
+    db_scale = librosa.amplitude_to_db(magnitude, ref=np.max)
+
+    # Plot
+    plt.figure(figsize=(10, 4))
+    librosa.display.specshow(
+        db_scale,
+        sr=sample_rate,
+        hop_length=256,
+        x_axis="time",
+        y_axis="linear",
+        cmap="magma"
+    )
+    plt.colorbar(format="%+2.0f dB")
+    plt.title(title)
+    plt.tight_layout()
+    plt.show()
 
 
 # Show a mel-scaled spectrogram

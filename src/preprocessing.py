@@ -4,7 +4,7 @@ import soundfile as sf
 import librosa
 import numpy as np
 
-from visualization import plot_waveform
+from visualization import plot_waveform, plot_spectrogram
 
 
 
@@ -192,8 +192,10 @@ def main():
     print("Duration:", len(processed_audio) / sr)
     print("Max amplitude:", np.max(np.abs(processed_audio)))
 
-    # NEW: Plot the waveform
+    # NEW: Charts
     plot_waveform(processed_audio, sr, "Processed Waveform")
+    plot_spectrogram(processed_audio, sr, "Processed Audio Spectrogram")
+
 
     dataset = [
         {"file_path": "data/raw/FrontPass/FrontPass_L2R_HeavyWind.wav", "label": "FrontPass"},
