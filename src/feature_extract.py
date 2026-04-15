@@ -46,10 +46,20 @@ def extract_rms_feature(audio, sample_rate=16000):
     return np.array([rms_mean, rms_std], dtype=np.float32)
 
 # Summarize where the energy sits in the frequency spectrum.
+def extract_spectral_centroid_feature(audio, sample_rate):
+    # Compute spectral centroid → shape (1, time_frames)
+    centroid = librosa.feature.spectral_centroid(
+        y=audio,
+        sr=sample_rate,
+        n_fft=1024,
+        hop_length=256
+    )[0]  # flatten to (time_frames,)
 
+    # Mean and std across time
+    centroid_mean = np.mean(centroid)
+    centroid_std = np.std(centroid)
 
-def extract_spectral_centroid_feature():
-    pass
+    return np.array([centroid_mean, centroid_std], dtype=np.float32)
 
 # Measure noisiness / signal roughness
 
@@ -136,6 +146,19 @@ def main():
 
     print("RMS feature vector:", rms_feat)
     print("Shape:", rms_feat.shape)
+
+    processed_audio, sr = preprocess_audio(
+        file_path="/Users/chancekrueger/Documents/GitHub/EchoRide/data/raw/FrontPass/FrontPass_L2R_HeavyWind.wav",
+        target_sr=16000,
+        target_duration=2.0,
+        silence_threshold=500
+    )
+
+    centroid_feat = extract_spectral_centroid_feature(processed_audio, sr)
+
+    print("Spectral centroid feature:", centroid_feat)
+    print("Shape:", centroid_feat.shape)
+
     
 
     print("\n=== DONE ===")
