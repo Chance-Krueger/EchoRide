@@ -224,8 +224,6 @@ def main():
     for entry in processed:
         print(entry["file_path"], len(entry["audio"]), entry["sample_rate"])
 
-main()
-
 
 if __name__ == "__main__":
     main()
