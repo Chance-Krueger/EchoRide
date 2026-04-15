@@ -1,6 +1,7 @@
 from scipy.io import wavfile
 import soundfile as sf
 import librosa
+import numpy as np
 
 
 
@@ -45,9 +46,28 @@ def convert_to_mono(audio):
         return audio
     return audio.mean(axis=1)
 
+
 # Remove unnecessary quiet sections at the beginning and end.
-def trim_silence():
-    pass
+def trim_silence(audio, threshold):
+    # Ensure mono
+    if audio.ndim > 1:
+        audio = audio.mean(axis=1)
+
+    # Absolute amplitude
+    abs_audio = np.abs(audio)
+
+    # Find indices where audio is above threshold
+    above_thresh = np.where(abs_audio > threshold)[0]
+
+    # If nothing is above threshold, return original
+    if len(above_thresh) == 0:
+        return audio
+
+    start = above_thresh[0]
+    end = above_thresh[-1] + 1  # include last sample
+
+    trimmed_audio = audio[start:end]
+    return trimmed_audio
 
 
 # Put all clips on a similar amplitude scale.
@@ -77,16 +97,27 @@ def main():
     # Load audio
     audio, sample_rate = load_audio_file(file_path)
 
-    print("=== BEFORE RESAMPLING ===")
+    print("=== ORIGINAL ===")
     print(inspect_audio_properties(audio, sample_rate, file_path))
+    print("Shape before mono:", audio.shape)
 
-    # Choose a target sample rate
-    target_sr = 16000
+    # Convert to mono
+    if audio.ndim > 1:
+        audio = audio.mean(axis=1)
+
+    print("\n=== AFTER MONO ===")
+    print("Num samples:", len(audio))
+
+    # Trim silence
+    trimmed = trim_silence(audio, threshold=500)
+
+    print("\n=== AFTER TRIM SILENCE ===")
+    print("Num samples:", len(trimmed))
+    print("Duration:", len(trimmed) / sample_rate)
 
     # Resample
-    audio = convert_to_mono(audio)
-    resampled_audio, new_sr = resample_audio(audio, sample_rate, target_sr, file_path)
-
+    target_sr = 16000
+    resampled_audio, new_sr = resample_audio(trimmed, sample_rate, target_sr, file_path)
 
     print("\n=== AFTER RESAMPLING ===")
     print({
@@ -94,5 +125,6 @@ def main():
         "num_samples": len(resampled_audio),
         "duration": len(resampled_audio) / new_sr
     })
+
 
 main()
