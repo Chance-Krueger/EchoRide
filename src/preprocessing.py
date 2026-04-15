@@ -4,6 +4,9 @@ import soundfile as sf
 import librosa
 import numpy as np
 
+from visualization import plot_waveform, plot_spectrogram, plot_mel_spectrogram
+
+
 
 
 # Noise reduction, filtering, normalization
@@ -123,6 +126,7 @@ def pad_or_crop_audio(audio, sample_rate, target_duration):
 
 # Apply the full standardization pipeline to one clip.
 def preprocess_audio(file_path, target_sr, target_duration, silence_threshold=500):
+
     # 1. Load
     audio, sample_rate = load_audio_file(file_path)
 
@@ -140,6 +144,8 @@ def preprocess_audio(file_path, target_sr, target_duration, silence_threshold=50
 
     # 6. Pad or crop to fixed duration
     audio = pad_or_crop_audio(audio, sample_rate, target_duration)
+
+    print("After trim_silence:", len(audio), "samples")
 
     return audio, sample_rate
 
@@ -179,15 +185,29 @@ def main():
     processed_audio, sr = preprocess_audio(
         file_path=file_path,
         target_sr=16000,
-        target_duration=2.0,   # 2 seconds
+        target_duration=2.0,
         silence_threshold=500
     )
+
+    raw_audio, raw_sr = load_audio_file(file_path)
+
+    print("Raw audio length:", len(raw_audio))
+
 
     print("=== FINAL OUTPUT ===")
     print("Sample rate:", sr)
     print("Num samples:", len(processed_audio))
     print("Duration:", len(processed_audio) / sr)
     print("Max amplitude:", np.max(np.abs(processed_audio)))
+
+    # NEW: Charts
+    plot_waveform(processed_audio, sr, "Processed Waveform")
+    plot_spectrogram(processed_audio, sr, "Processed Audio Spectrogram")
+    plot_mel_spectrogram(processed_audio, sr, "Processed Mel Spectrogram")
+
+
+
+
 
     dataset = [
         {"file_path": "data/raw/FrontPass/FrontPass_L2R_HeavyWind.wav", "label": "FrontPass"},
@@ -203,6 +223,8 @@ def main():
     print("\n=== DATASET RESULTS ===")
     for entry in processed:
         print(entry["file_path"], len(entry["audio"]), entry["sample_rate"])
+
+main()
 
 
 if __name__ == "__main__":
