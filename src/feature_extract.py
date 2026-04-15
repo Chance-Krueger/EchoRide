@@ -110,8 +110,26 @@ def extract_spectral_rolloff_feature(audio, sample_rate):
     return np.array([rolloff_mean, rolloff_std], dtype=np.float32)
 
 # main feature extractor
-def extract_features_from_audio():
-    pass
+def extract_features_from_audio(audio, sample_rate):
+    # Individual feature groups
+    mfcc_features = extract_mfcc_features(audio, sample_rate)                     # (26,)
+    rms_features = extract_rms_feature(audio)                                     # (2,)
+    centroid_features = extract_spectral_centroid_feature(audio, sample_rate)     # (2,)
+    zcr_features = extract_zero_crossing_feature(audio)                           # (2,)
+    bandwidth_features = extract_spectral_bandwidth_feature(audio, sample_rate)   # (2,)
+    rolloff_features = extract_spectral_rolloff_feature(audio, sample_rate)       # (2,)
+
+    # Concatenate all features into one vector
+    full_vector = np.concatenate([
+        mfcc_features,
+        rms_features,
+        centroid_features,
+        zcr_features,
+        bandwidth_features,
+        rolloff_features
+    ]).astype(np.float32)
+
+    return full_vector
 
 # Take the processed dataset and convert it into model-ready data
 def extract_features_from_dataset():
@@ -196,6 +214,19 @@ def main():
     rolloff_feat = extract_spectral_rolloff_feature(processed_audio, sr)
     print("Spectral rolloff feature:", rolloff_feat)
     print("Shape:", rolloff_feat.shape)
+
+    processed_audio, sr = preprocess_audio(
+    file_path="data/raw/FrontPass/FrontPass_L2R_HeavyWind.wav",
+    target_sr=16000,
+    target_duration=2.0,
+    silence_threshold=500
+)
+
+    vec = extract_features_from_audio(processed_audio, sr)
+
+    print("Full feature vector shape:", vec.shape)
+    print("Sample:", vec[:10])
+
 
 
 
