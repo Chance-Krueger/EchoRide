@@ -4,7 +4,7 @@ import soundfile as sf
 import librosa
 import numpy as np
 
-from visualization import plot_waveform, plot_spectrogram, plot_mel_spectrogram
+from visualization import plot_waveform, plot_spectrogram, plot_mel_spectrogram, compare_waveforms
 
 
 
@@ -186,6 +186,9 @@ def main():
         silence_threshold=500
     )
 
+    raw_audio, raw_sr = load_audio_file(file_path)
+
+
     print("=== FINAL OUTPUT ===")
     print("Sample rate:", sr)
     print("Num samples:", len(processed_audio))
@@ -196,6 +199,9 @@ def main():
     plot_waveform(processed_audio, sr, "Processed Waveform")
     plot_spectrogram(processed_audio, sr, "Processed Audio Spectrogram")
     plot_mel_spectrogram(processed_audio, sr, "Processed Mel Spectrogram")
+    compare_waveforms(raw_audio, raw_sr, processed_audio, sr, "FrontPass HeavyWind")
+
+
 
 
 

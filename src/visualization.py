@@ -79,8 +79,30 @@ def plot_mel_spectrogram(audio, sample_rate, title="Mel Spectrogram"):
 
 
 # Visually compare raw and processed audio.
-def compare_waveforms():
-    pass
+def compare_waveforms(raw_audio, raw_sr, processed_audio, processed_sr, title="Waveform Comparison"):
+    # Time axes
+    raw_time = np.linspace(0, len(raw_audio) / raw_sr, len(raw_audio))
+    processed_time = np.linspace(0, len(processed_audio) / processed_sr, len(processed_audio))
+
+    # Create figure with two panels
+    plt.figure(figsize=(12, 6))
+
+    # --- Top panel: raw waveform ---
+    plt.subplot(2, 1, 1)
+    plt.plot(raw_time, raw_audio, linewidth=1)
+    plt.title(f"{title} — Raw Audio")
+    plt.xlabel("Time (seconds)")
+    plt.ylabel("Amplitude")
+
+    # --- Bottom panel: processed waveform ---
+    plt.subplot(2, 1, 2)
+    plt.plot(processed_time, processed_audio, linewidth=1, color="orange")
+    plt.title(f"{title} — Processed Audio")
+    plt.xlabel("Time (seconds)")
+    plt.ylabel("Amplitude")
+
+    plt.tight_layout()
+    plt.show()
 
 
 # Visually compare raw and processed frequency content.
