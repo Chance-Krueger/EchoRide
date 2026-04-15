@@ -4,6 +4,9 @@ import soundfile as sf
 import librosa
 import numpy as np
 
+from visualization import plot_waveform
+
+
 
 
 # Noise reduction, filtering, normalization
@@ -179,7 +182,7 @@ def main():
     processed_audio, sr = preprocess_audio(
         file_path=file_path,
         target_sr=16000,
-        target_duration=2.0,   # 2 seconds
+        target_duration=2.0,
         silence_threshold=500
     )
 
@@ -188,6 +191,9 @@ def main():
     print("Num samples:", len(processed_audio))
     print("Duration:", len(processed_audio) / sr)
     print("Max amplitude:", np.max(np.abs(processed_audio)))
+
+    # NEW: Plot the waveform
+    plot_waveform(processed_audio, sr, "Processed Waveform")
 
     dataset = [
         {"file_path": "data/raw/FrontPass/FrontPass_L2R_HeavyWind.wav", "label": "FrontPass"},
@@ -203,6 +209,8 @@ def main():
     print("\n=== DATASET RESULTS ===")
     for entry in processed:
         print(entry["file_path"], len(entry["audio"]), entry["sample_rate"])
+
+main()
 
 
 if __name__ == "__main__":
