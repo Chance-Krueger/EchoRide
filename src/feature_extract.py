@@ -62,10 +62,19 @@ def extract_spectral_centroid_feature(audio, sample_rate):
     return np.array([centroid_mean, centroid_std], dtype=np.float32)
 
 # Measure noisiness / signal roughness
+def extract_zero_crossing_feature(audio):
+    # Compute zero-crossing rate → shape (1, time_frames)
+    zcr = librosa.feature.zero_crossing_rate(
+        y=audio,
+        frame_length=1024,
+        hop_length=256
+    )[0]  # flatten to (time_frames,)
 
+    # Mean and std across time
+    zcr_mean = np.mean(zcr)
+    zcr_std = np.std(zcr)
 
-def extract_zero_crossing_feature():
-    pass
+    return np.array([zcr_mean, zcr_std], dtype=np.float32)
 
 # Summarize the spread of frequencies
 
@@ -158,6 +167,10 @@ def main():
 
     print("Spectral centroid feature:", centroid_feat)
     print("Shape:", centroid_feat.shape)
+
+    zcr_feat = extract_zero_crossing_feature(processed_audio)
+    print("ZCR feature vector:", zcr_feat)
+    print("Shape:", zcr_feat.shape)
 
     
 
