@@ -4,7 +4,7 @@ import soundfile as sf
 import librosa
 import numpy as np
 
-from visualization import plot_waveform, plot_spectrogram
+from visualization import plot_waveform, plot_spectrogram, plot_mel_spectrogram
 
 
 
@@ -195,6 +195,8 @@ def main():
     # NEW: Charts
     plot_waveform(processed_audio, sr, "Processed Waveform")
     plot_spectrogram(processed_audio, sr, "Processed Audio Spectrogram")
+    plot_mel_spectrogram(processed_audio, sr, "Processed Mel Spectrogram")
+
 
 
     dataset = [

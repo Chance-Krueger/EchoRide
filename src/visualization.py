@@ -48,8 +48,34 @@ def plot_spectrogram(audio, sample_rate, title="Spectrogram"):
 
 
 # Show a mel-scaled spectrogram
-def plot_mel_spectrogram():
-    pass
+def plot_mel_spectrogram(audio, sample_rate, title="Mel Spectrogram"):
+    # Compute mel spectrogram (power)
+    mel_spec = librosa.feature.melspectrogram(
+        y=audio,
+        sr=sample_rate,
+        n_fft=1024,
+        hop_length=256,
+        n_mels=128,
+        power=2.0
+    )
+
+    # Convert power to decibels
+    mel_db = librosa.power_to_db(mel_spec, ref=np.max)
+
+    # Plot
+    plt.figure(figsize=(10, 4))
+    librosa.display.specshow(
+        mel_db,
+        sr=sample_rate,
+        hop_length=256,
+        x_axis="time",
+        y_axis="mel",
+        cmap="magma"
+    )
+    plt.colorbar(format="%+2.0f dB")
+    plt.title(title)
+    plt.tight_layout()
+    plt.show()
 
 
 # Visually compare raw and processed audio.
