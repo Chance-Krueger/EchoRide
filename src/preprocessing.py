@@ -1,4 +1,6 @@
 from scipy.io import wavfile
+import soundfile as sf
+
 
 
 # Noise reduction, filtering, normalization
@@ -10,8 +12,17 @@ def load_audio_file(file_path):
 
 
 # Look at one loaded clip and understand what dealing with.
-def inspect_audio_properties():
-    pass
+def inspect_audio_properties(audio, sample_rate, file_path):
+    num_samples = len(audio)
+    duration = num_samples / sample_rate
+    info = sf.info(file_path)
+
+    return {
+        "sample_rate": sample_rate,
+        "num_samples": num_samples,
+        "duration": duration,
+        "channels": info.channels
+    }
 
 
 # Make every clip use the same sample rate.
@@ -51,6 +62,8 @@ def preprocess_dataset():
 
 def main():
 
-    print(load_audio_file("/Users/chancekrueger/Documents/GitHub/EchoRide/data/raw/FrontPass/FrontPass_L2R_HeavyWind.wav"))
+    audio, sample_rate = load_audio_file("/Users/chancekrueger/Documents/GitHub/EchoRide/data/raw/FrontPass/FrontPass_L2R_HeavyWind.wav")
+
+    print(inspect_audio_properties(audio, sample_rate, "/Users/chancekrueger/Documents/GitHub/EchoRide/data/raw/FrontPass/FrontPass_L2R_HeavyWind.wav"))
 
 main()
