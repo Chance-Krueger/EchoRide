@@ -34,6 +34,14 @@ def encode_labels(y):
     return y_encoded, label_encoder
 
 
+# Print the mapping from class index to class name.
+def print_label_mapping(label_encoder):
+    print("\n=== LABEL MAPPING ===")
+    for idx, label in enumerate(label_encoder.classes_):
+        print(f"{idx}: {label}")
+
+
+
 
 
 def main():
@@ -51,8 +59,11 @@ def main():
     print("Encoded labels:", y_encoded)
     print("Classes:", label_encoder.classes_)
 
-    # Step 3: Sanity check
-    print("First feature vector:", X[0])
+    # Step 3: Print mapping
+    print_label_mapping(label_encoder)
+
+    # Step 4: Sanity check
+    print("\nFirst feature vector:", X[0])
     print("Original label:", y[0])
     print("Encoded label:", y_encoded[0])
 
