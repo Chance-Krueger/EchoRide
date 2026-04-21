@@ -143,30 +143,36 @@ def extract_features_from_audio(audio, sample_rate, n_mfcc=13):
     return feature_vector
 
 # Take the processed dataset and convert it into model-ready data
-def extract_features_from_dataset(processed_dataset):
+def extract_features_from_dataset(processed_dataset, n_mfcc=13):
+    feature_dataset = build_feature_dataset(processed_dataset, n_mfcc=n_mfcc)
+
     X = []
     y = []
 
-    for entry in processed_dataset:
-        audio = entry["audio"]
-        sample_rate = entry["sample_rate"]
-        label = entry["label"]
+    for entry in feature_dataset:
+        X.append(entry["features"])
+        y.append(entry["label"])
 
-        # Extract the full 36‑dimensional feature vector
-        feature_vector = extract_features_from_audio(audio, sample_rate)
-
-        X.append(feature_vector)
-        y.append(label)
-
-    # Convert to NumPy arrays for ML models
     X = np.array(X, dtype=np.float32)
     y = np.array(y)
 
+    if len(X) != len(y):
+        raise ValueError(
+            f"Sample count mismatch: len(X)={len(X)} vs len(y)={len(y)}"
+        )
+
+    if X.ndim != 2:
+        raise ValueError(f"X should be 2D, got shape {X.shape}")
+
+    if y.ndim != 1:
+        raise ValueError(f"y should be 1D, got shape {y.shape}")
+
     return X, y
+
 
 # Adds a fixed-length feature vector to each processed dataset entry.
 def build_feature_dataset(processed_dataset, n_mfcc=13):
-    
+
     feature_dataset = []
 
     for entry in processed_dataset:
