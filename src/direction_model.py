@@ -1,7 +1,7 @@
 from sklearn.preprocessing import LabelEncoder
 from sklearn.model_selection import train_test_split
 from sklearn.ensemble import RandomForestClassifier
-from sklearn.metrics import accuracy_score, classification_report
+from sklearn.metrics import accuracy_score, classification_report, confusion_matrix
 
 
 from audio_input import get_raw_data_path, build_file_index
@@ -73,6 +73,34 @@ def train_random_forest(X_train, y_train, random_state=42):
     return model
 
 
+# Evaluate the trained model and print: accuracy, classification report, confusion matrix
+def evaluate_model(model, X_test, y_test, label_encoder):
+    y_pred = model.predict(X_test)
+
+    accuracy = accuracy_score(y_test, y_pred)
+    report = classification_report(
+        y_test,
+        y_pred,
+        target_names=label_encoder.classes_,
+        zero_division=0
+    )
+    cm = confusion_matrix(y_test, y_pred)
+
+    print("\n=== EVALUATION ===")
+    print(f"Accuracy: {accuracy:.4f}\n")
+
+    print("Classification Report:")
+    print(report)
+
+    print("Confusion Matrix:")
+    print(cm)
+
+    return {
+        "accuracy": accuracy,
+        "classification_report": report,
+        "confusion_matrix": cm,
+        "y_pred": y_pred
+    }
 
 
 
@@ -95,20 +123,15 @@ def main():
     print("Train X:", X_train.shape)
     print("Test X:", X_test.shape)
 
-    # Step 4: Train Random Forest
+    # Step 4: Train model
     print("\n=== TRAINING RANDOM FOREST ===")
     model = train_random_forest(X_train, y_train)
 
-    # Step 5: Evaluate
-    y_pred = model.predict(X_test)
-    acc = accuracy_score(y_test, y_pred)
+    # Step 5: Evaluate model
+    evaluate_model(model, X_test, y_test, label_encoder)
 
-    print("\n=== EVALUATION ===")
-    print("Accuracy:", acc)
-    print("\nClassification Report:")
-    print(classification_report(y_test, y_pred, target_names=label_encoder.classes_))
+    print("\n=== DONE ===")
 
-    print("=== DONE ===")
 
 if __name__ == "__main__":
     main()
