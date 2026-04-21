@@ -56,11 +56,35 @@ VIBRATION_MAP = {
 
 # Get vibration pattern
 def get_vibration_pattern(label):
-    
+
     if label not in VIBRATION_MAP:
         raise ValueError(f"Unknown label: {label}")
 
     return VIBRATION_MAP[label]
 
 
+# Simulates what the vibration would feel like (prints it). Replace this later with hardware control.
+def simulate_vibration(pattern):
 
+    side = pattern["side"]
+    pattern_type = pattern["pattern"]
+    intensity = pattern["intensity"]
+    duration = pattern["duration"]
+
+    print("\n=== VIBRATION OUTPUT ===")
+    print(f"Side: {side}")
+    print(f"Pattern: {pattern_type}")
+    print(f"Intensity: {intensity}")
+    print(f"Duration: {duration}")
+
+    if pattern_type == "smooth":
+        print("-> Continuous vibration")
+
+    elif pattern_type == "pulse":
+        print("-> Pulsing vibration (on/off rhythm)")
+
+    elif pattern_type == "burst":
+        print("-> Rapid alert bursts")
+
+    else:
+        print("-> Unknown pattern type")
