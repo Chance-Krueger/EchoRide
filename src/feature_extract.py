@@ -110,17 +110,18 @@ def extract_spectral_rolloff_feature(audio, sample_rate):
     return np.array([rolloff_mean, rolloff_std], dtype=np.float32)
 
 # main feature extractor
-def extract_features_from_audio(audio, sample_rate):
+def extract_features_from_audio(audio, sample_rate, n_mfcc=13):
     # Individual feature groups
-    mfcc_features = extract_mfcc_features(audio, sample_rate)                     # (26,)
-    rms_features = extract_rms_feature(audio)                                     # (2,)
-    centroid_features = extract_spectral_centroid_feature(audio, sample_rate)     # (2,)
-    zcr_features = extract_zero_crossing_feature(audio)                           # (2,)
-    bandwidth_features = extract_spectral_bandwidth_feature(audio, sample_rate)   # (2,)
-    rolloff_features = extract_spectral_rolloff_feature(audio, sample_rate)       # (2,)
+    audio = np.asarray(audio, dtype=np.float32).flatten()
 
-    # Concatenate all features into one vector
-    full_vector = np.concatenate([
+    mfcc_features = extract_mfcc_features(audio, sample_rate, n_mfcc=n_mfcc)
+    rms_features = extract_rms_feature(audio)
+    centroid_features = extract_spectral_centroid_feature(audio, sample_rate)
+    zcr_features = extract_zero_crossing_feature(audio)
+    bandwidth_features = extract_spectral_bandwidth_feature(audio, sample_rate)
+    rolloff_features = extract_spectral_rolloff_feature(audio, sample_rate)
+
+    feature_vector = np.concatenate([
         mfcc_features,
         rms_features,
         centroid_features,
@@ -129,7 +130,17 @@ def extract_features_from_audio(audio, sample_rate):
         rolloff_features
     ]).astype(np.float32)
 
-    return full_vector
+    expected_length = (2 * n_mfcc) + 10  # 26 + 10 = 36 when n_mfcc=13
+    if feature_vector.shape[0] != expected_length:
+        raise ValueError(
+            f"Feature vector length mismatch. "
+            f"Expected {expected_length}, got {feature_vector.shape[0]}"
+        )
+
+    if np.isnan(feature_vector).any() or np.isinf(feature_vector).any():
+        raise ValueError("Feature vector contains NaN or Inf values.")
+
+    return feature_vector
 
 # Take the processed dataset and convert it into model-ready data
 def extract_features_from_dataset(processed_dataset):
