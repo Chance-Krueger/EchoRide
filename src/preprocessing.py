@@ -145,8 +145,6 @@ def preprocess_audio(file_path, target_sr, target_duration, silence_threshold=50
     # 6. Pad or crop to fixed duration
     audio = pad_or_crop_audio(audio, sample_rate, target_duration)
 
-    print("After trim_silence:", len(audio), "samples")
-
     return audio, sample_rate
 
 
