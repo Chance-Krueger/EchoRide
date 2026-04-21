@@ -66,11 +66,19 @@ def extract_rms_feature(audio):
 
     return summarize_feature_series(rms)
 
-    # Mean and std across time
-    rms_mean = np.mean(rms)
-    rms_std = np.std(rms)
 
-    return np.array([rms_mean, rms_std], dtype=np.float32)
+# RMS temporal features: late-minus-early mean difference, overall slope
+def extract_rms_temporal_features(audio):
+    rms = librosa.feature.rms(
+        y=audio,
+        frame_length=1024,
+        hop_length=256
+    )[0]
+
+    half_diff = split_halves_mean_difference(rms)
+    slope = compute_linear_slope(rms)
+
+    return np.concatenate([half_diff, slope]).astype(np.float32)
 
 # Summarize where the energy sits in the frequency spectrum.
 def extract_spectral_centroid_feature(audio, sample_rate):
