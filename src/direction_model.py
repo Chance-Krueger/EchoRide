@@ -5,6 +5,9 @@ from sklearn.model_selection import train_test_split
 from sklearn.ensemble import RandomForestClassifier
 from sklearn.metrics import accuracy_score, classification_report, confusion_matrix
 
+from sklearn.preprocessing import StandardScaler
+from sklearn.svm import SVC
+
 
 from audio_input import get_raw_data_path, build_file_index
 from preprocessing import preprocess_dataset
@@ -73,6 +76,24 @@ def train_random_forest(X_train, y_train, random_state=42):
 
     model.fit(X_train, y_train)
     return model
+
+
+# Train a baseline SVM classifier.
+def train_svm(X_train, y_train, random_state=42):
+    scaler = StandardScaler()
+    X_train_scaled = scaler.fit_transform(X_train)
+
+    model = SVC(
+        kernel="rbf",
+        C=10,
+        gamma="scale",
+        class_weight="balanced",
+        random_state=random_state
+    )
+
+    model.fit(X_train_scaled, y_train)
+
+    return model, scaler
 
 
 # Evaluate the trained model and print: accuracy, classification report, confusion matrix
