@@ -31,6 +31,31 @@ def extract_mfcc_features(audio, sample_rate, n_mfcc=13):
     return features
 
 
+# Temporal MFCC features: delta MFCC mean + std, delta-delta MFCC mean + std
+def extract_mfcc_delta_features(audio, sample_rate, n_mfcc=13):
+    mfcc = librosa.feature.mfcc(
+        y=audio,
+        sr=sample_rate,
+        n_mfcc=n_mfcc,
+        n_fft=1024,
+        hop_length=256
+    )
+
+    mfcc_delta = librosa.feature.delta(mfcc)
+    mfcc_delta2 = librosa.feature.delta(mfcc, order=2)
+
+    delta_mean = np.mean(mfcc_delta, axis=1)
+    delta_std = np.std(mfcc_delta, axis=1)
+
+    delta2_mean = np.mean(mfcc_delta2, axis=1)
+    delta2_std = np.std(mfcc_delta2, axis=1)
+
+    return np.concatenate([
+        delta_mean, delta_std,
+        delta2_mean, delta2_std
+    ]).astype(np.float32)
+
+
 # Compute RMS energy and summarize it
 def extract_rms_feature(audio, sample_rate=16000):
     # Compute RMS over frames
