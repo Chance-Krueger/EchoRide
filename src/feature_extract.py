@@ -220,6 +220,18 @@ def summarize_feature_dataset(feature_dataset):
         print(f"  {label}: {count}")
 
 
+# Take a 1D time-varying feature and return: [mean, std, min, max]
+def summarize_feature_series(series):
+    series = np.asarray(series, dtype=np.float32).flatten()
+
+    return np.array([
+        np.mean(series),
+        np.std(series),
+        np.min(series),
+        np.max(series)
+    ], dtype=np.float32)
+
+
 
 
 def main():
