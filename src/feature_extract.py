@@ -82,19 +82,14 @@ def extract_rms_temporal_features(audio):
 
 # Summarize where the energy sits in the frequency spectrum.
 def extract_spectral_centroid_feature(audio, sample_rate):
-    # Compute spectral centroid → shape (1, time_frames)
     centroid = librosa.feature.spectral_centroid(
         y=audio,
         sr=sample_rate,
         n_fft=1024,
         hop_length=256
-    )[0]  # flatten to (time_frames,)
+    )[0]
 
-    # Mean and std across time
-    centroid_mean = np.mean(centroid)
-    centroid_std = np.std(centroid)
-
-    return np.array([centroid_mean, centroid_std], dtype=np.float32)
+    return summarize_feature_series(centroid)
 
 # Measure noisiness / signal roughness
 def extract_zero_crossing_feature(audio):
