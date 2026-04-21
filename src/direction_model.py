@@ -5,11 +5,13 @@ from sklearn.model_selection import train_test_split
 from sklearn.ensemble import RandomForestClassifier
 from sklearn.metrics import accuracy_score, classification_report, confusion_matrix
 
+from sklearn.preprocessing import StandardScaler
+from sklearn.svm import SVC
+
 
 from audio_input import get_raw_data_path, build_file_index
 from preprocessing import preprocess_dataset
 from feature_extract import extract_features_from_dataset
-from vibration import get_vibration_pattern, simulate_vibration
 
 # Core algorithm that determines direction
 
@@ -76,6 +78,24 @@ def train_random_forest(X_train, y_train, random_state=42):
     return model
 
 
+# Train a baseline SVM classifier.
+def train_svm(X_train, y_train, random_state=42):
+    scaler = StandardScaler()
+    X_train_scaled = scaler.fit_transform(X_train)
+
+    model = SVC(
+        kernel="rbf",
+        C=10,
+        gamma="scale",
+        class_weight="balanced",
+        random_state=random_state
+    )
+
+    model.fit(X_train_scaled, y_train)
+
+    return model, scaler
+
+
 # Evaluate the trained model and print: accuracy, classification report, confusion matrix
 def evaluate_model(model, X_test, y_test, label_encoder):
     y_pred = model.predict(X_test)
@@ -104,6 +124,39 @@ def evaluate_model(model, X_test, y_test, label_encoder):
         "confusion_matrix": cm,
         "y_pred": y_pred
     }
+
+
+# Evaluate the trained SVM model and print: accuracy, classification report, confusion matrix
+def evaluate_scaled_model(model, scaler, X_test, y_test, label_encoder):
+    X_test_scaled = scaler.transform(X_test)
+    y_pred = model.predict(X_test_scaled)
+
+    accuracy = accuracy_score(y_test, y_pred)
+    report = classification_report(
+        y_test,
+        y_pred,
+        target_names=label_encoder.classes_,
+        zero_division=0
+    )
+    cm = confusion_matrix(y_test, y_pred)
+
+    print("\n=== EVALUATION ===")
+    print(f"Accuracy: {accuracy:.4f}\n")
+
+    print("Classification Report:")
+    print(report)
+
+    print("Confusion Matrix:")
+    print(cm)
+
+    return {
+        "accuracy": accuracy,
+        "classification_report": report,
+        "confusion_matrix": cm,
+        "y_pred": y_pred
+    }
+
+
 
 # Predict one sample from a single feature vector.
 def predict_one(model, feature_vector, label_encoder):
@@ -162,10 +215,15 @@ def main():
 
     summarize_split(X_train, X_test, y_train, y_test, label_encoder)
 
-    print("\n=== TRAINING MODEL ===")
+    print("\n=== TRAINING FOREST MODEL ===")
     model = train_random_forest(X_train, y_train, random_state=42)
 
     results = evaluate_model(model, X_test, y_test, label_encoder)
+
+    # print("\n=== TRAINING SVM MODEL ===")
+    # model, scaler = train_svm(X_train, y_train, random_state=42)
+
+    # results = evaluate_scaled_model(model, scaler, X_test, y_test, label_encoder)
 
     # Example: inspect the first test prediction
     first_pred = label_encoder.inverse_transform([model.predict(X_test[:1])[0]])[0]
@@ -174,12 +232,6 @@ def main():
     print("\n=== SAMPLE PREDICTION ===")
     print("True label:", first_true)
     print("Predicted label:", first_pred)
-
-
-    pred_label = label_encoder.inverse_transform([model.predict(X_test[:1])[0]])[0]
-
-    pattern = get_vibration_pattern(pred_label)
-    simulate_vibration(pattern)
 
     return model, label_encoder, results
 
