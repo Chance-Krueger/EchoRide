@@ -57,13 +57,14 @@ def extract_mfcc_delta_features(audio, sample_rate, n_mfcc=13):
 
 
 # Compute RMS energy and summarize it
-def extract_rms_feature(audio, sample_rate=16000):
-    # Compute RMS over frames
+def extract_rms_feature(audio):
     rms = librosa.feature.rms(
         y=audio,
         frame_length=1024,
         hop_length=256
-    )[0]  # shape: (time_frames,)
+    )[0]
+
+    return summarize_feature_series(rms)
 
     # Mean and std across time
     rms_mean = np.mean(rms)
