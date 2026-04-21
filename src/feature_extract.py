@@ -232,6 +232,23 @@ def summarize_feature_series(series):
     ], dtype=np.float32)
 
 
+# Measures change over time: mean(second half) - mean(first half)
+def split_halves_mean_difference(series):
+    series = np.asarray(series, dtype=np.float32).flatten()
+
+    if len(series) < 2:
+        return np.array([0.0], dtype=np.float32)
+
+    midpoint = len(series) // 2
+    first_half = series[:midpoint]
+    second_half = series[midpoint:]
+
+    if len(first_half) == 0 or len(second_half) == 0:
+        return np.array([0.0], dtype=np.float32)
+
+    diff = np.mean(second_half) - np.mean(first_half)
+    return np.array([diff], dtype=np.float32)
+
 
 
 def main():
