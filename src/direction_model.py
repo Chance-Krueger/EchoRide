@@ -215,15 +215,15 @@ def main():
 
     summarize_split(X_train, X_test, y_train, y_test, label_encoder)
 
-    # print("\n=== TRAINING FOREST MODEL ===")
-    # model = train_random_forest(X_train, y_train, random_state=42)
+    print("\n=== TRAINING FOREST MODEL ===")
+    model = train_random_forest(X_train, y_train, random_state=42)
 
-    # results = evaluate_model(model, X_test, y_test, label_encoder)
+    results = evaluate_model(model, X_test, y_test, label_encoder)
 
-    print("\n=== TRAINING SVM MODEL ===")
-    model, scaler = train_svm(X_train, y_train, random_state=42)
+    # print("\n=== TRAINING SVM MODEL ===")
+    # model, scaler = train_svm(X_train, y_train, random_state=42)
 
-    results = evaluate_scaled_model(model, scaler, X_test, y_test, label_encoder)
+    # results = evaluate_scaled_model(model, scaler, X_test, y_test, label_encoder)
 
     # Example: inspect the first test prediction
     first_pred = label_encoder.inverse_transform([model.predict(X_test[:1])[0]])[0]
