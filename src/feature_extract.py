@@ -91,20 +91,32 @@ def extract_spectral_centroid_feature(audio, sample_rate):
 
     return summarize_feature_series(centroid)
 
+
+# Spectral centroid temporal features: late-minus-early mean difference, overall slope
+def extract_spectral_centroid_temporal_features(audio, sample_rate):
+    centroid = librosa.feature.spectral_centroid(
+        y=audio,
+        sr=sample_rate,
+        n_fft=1024,
+        hop_length=256
+    )[0]
+
+    half_diff = split_halves_mean_difference(centroid)
+    slope = compute_linear_slope(centroid)
+
+    return np.concatenate([half_diff, slope]).astype(np.float32)
+
+
+
 # Measure noisiness / signal roughness
 def extract_zero_crossing_feature(audio):
-    # Compute zero-crossing rate → shape (1, time_frames)
     zcr = librosa.feature.zero_crossing_rate(
         y=audio,
         frame_length=1024,
         hop_length=256
-    )[0]  # flatten to (time_frames,)
+    )[0]
 
-    # Mean and std across time
-    zcr_mean = np.mean(zcr)
-    zcr_std = np.std(zcr)
-
-    return np.array([zcr_mean, zcr_std], dtype=np.float32)
+    return summarize_feature_series(zcr)
 
 # Summarize the spread of frequencies
 def extract_spectral_bandwidth_feature(audio, sample_rate):
