@@ -1,5 +1,7 @@
 from sklearn.preprocessing import LabelEncoder
 from sklearn.model_selection import train_test_split
+from sklearn.ensemble import RandomForestClassifier
+from sklearn.metrics import accuracy_score, classification_report
 
 
 from audio_input import get_raw_data_path, build_file_index
@@ -58,6 +60,20 @@ def split_dataset(X, y_encoded, test_size=0.25, random_state=42):
     return X_train, X_test, y_train, y_test
 
 
+# Train a baseline Random Forest classifier.
+def train_random_forest(X_train, y_train, random_state=42):
+
+    model = RandomForestClassifier(
+        n_estimators=200,
+        random_state=random_state,
+        class_weight="balanced"
+    )
+
+    model.fit(X_train, y_train)
+    return model
+
+
+
 
 
 def main():
@@ -77,20 +93,22 @@ def main():
 
     print("\n=== SPLIT RESULTS ===")
     print("Train X:", X_train.shape)
-    print("Train y:", y_train.shape)
     print("Test X:", X_test.shape)
-    print("Test y:", y_test.shape)
 
-    # Step 4: Class balance check
-    print("\nTrain class counts:", {c: list(y_train).count(c) for c in set(y_train)})
-    print("Test class counts:", {c: list(y_test).count(c) for c in set(y_test)})
+    # Step 4: Train Random Forest
+    print("\n=== TRAINING RANDOM FOREST ===")
+    model = train_random_forest(X_train, y_train)
 
-    # Step 5: Sanity check sample
-    print("\nSample train label:", y_train[0])
-    print("Sample test label:", y_test[0])
+    # Step 5: Evaluate
+    y_pred = model.predict(X_test)
+    acc = accuracy_score(y_test, y_pred)
 
-    print("\n=== DONE ===")
+    print("\n=== EVALUATION ===")
+    print("Accuracy:", acc)
+    print("\nClassification Report:")
+    print(classification_report(y_test, y_pred, target_names=label_encoder.classes_))
 
+    print("=== DONE ===")
 
 if __name__ == "__main__":
     main()
