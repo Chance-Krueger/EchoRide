@@ -131,20 +131,15 @@ def extract_spectral_bandwidth_feature(audio, sample_rate):
 
 # Summarize the upper-end frequency boundary of most energy
 def extract_spectral_rolloff_feature(audio, sample_rate):
-    # Compute spectral rolloff → shape (1, time_frames)
     rolloff = librosa.feature.spectral_rolloff(
         y=audio,
         sr=sample_rate,
-        roll_percent=0.85,   # standard 85% rolloff
+        roll_percent=0.85,
         n_fft=1024,
         hop_length=256
-    )[0]  # flatten to (time_frames,)
+    )[0]
 
-    # Mean and std across time
-    rolloff_mean = np.mean(rolloff)
-    rolloff_std = np.std(rolloff)
-
-    return np.array([rolloff_mean, rolloff_std], dtype=np.float32)
+    return summarize_feature_series(rolloff)
 
 # main feature extractor
 def extract_features_from_audio(audio, sample_rate, n_mfcc=13):
