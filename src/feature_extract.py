@@ -1,7 +1,8 @@
 import numpy as np
 import librosa
 
-from preprocessing import load_audio_file, preprocess_audio, preprocess_dataset # TESTING
+from audio_input import get_raw_data_path, build_file_index
+from preprocessing import preprocess_dataset
 
 
 # Extracts features needed for direction detection
@@ -143,143 +144,110 @@ def extract_features_from_audio(audio, sample_rate, n_mfcc=13):
     return feature_vector
 
 # Take the processed dataset and convert it into model-ready data
-def extract_features_from_dataset(processed_dataset):
+def extract_features_from_dataset(processed_dataset, n_mfcc=13):
+    feature_dataset = build_feature_dataset(processed_dataset, n_mfcc=n_mfcc)
+
     X = []
     y = []
+
+    for entry in feature_dataset:
+        X.append(entry["features"])
+        y.append(entry["label"])
+
+    X = np.array(X, dtype=np.float32)
+    y = np.array(y)
+
+    if len(X) != len(y):
+        raise ValueError(
+            f"Sample count mismatch: len(X)={len(X)} vs len(y)={len(y)}"
+        )
+
+    if X.ndim != 2:
+        raise ValueError(f"X should be 2D, got shape {X.shape}")
+
+    if y.ndim != 1:
+        raise ValueError(f"y should be 1D, got shape {y.shape}")
+
+    return X, y
+
+
+# Adds a fixed-length feature vector to each processed dataset entry.
+def build_feature_dataset(processed_dataset, n_mfcc=13):
+
+    feature_dataset = []
 
     for entry in processed_dataset:
         audio = entry["audio"]
         sample_rate = entry["sample_rate"]
         label = entry["label"]
+        file_path = entry["file_path"]
 
-        # Extract the full 36‑dimensional feature vector
-        feature_vector = extract_features_from_audio(audio, sample_rate)
+        feature_vector = extract_features_from_audio(
+            audio,
+            sample_rate,
+            n_mfcc=n_mfcc
+        )
 
-        X.append(feature_vector)
-        y.append(label)
+        feature_entry = {
+            "file_path": file_path,
+            "label": label,
+            "sample_rate": sample_rate,
+            "features": feature_vector
+        }
 
-    # Convert to NumPy arrays for ML models
-    X = np.array(X, dtype=np.float32)
-    y = np.array(y)
+        feature_dataset.append(feature_entry)
 
-    return X, y
+    return feature_dataset
+
+# Helps summarize data
+def summarize_feature_dataset(feature_dataset):
+    print(f"Total samples: {len(feature_dataset)}")
+
+    if not feature_dataset:
+        print("Feature dataset is empty.")
+        return
+
+    feature_length = len(feature_dataset[0]["features"])
+    print(f"Feature length per sample: {feature_length}")
+
+    label_counts = {}
+    for entry in feature_dataset:
+        label = entry["label"]
+        label_counts[label] = label_counts.get(label, 0) + 1
+
+    print("Label counts:")
+    for label, count in sorted(label_counts.items()):
+        print(f"  {label}: {count}")
+
+
 
 
 def main():
-    dataset = [
-        {"file_path": "data/raw/FrontPass/FrontPass_L2R_HeavyWind.wav",
-            "label": "FrontPass"},
-        {"file_path": "data/raw/FrontPass/FrontPass_L2R_NC_Engine.wav",
-            "label": "FrontPass"},
-        {"file_path": "data/raw/FrontPass/FrontPass_R2L_HeavyWind.wav",
-            "label": "FrontPass"},
-        {"file_path": "data/raw/FrontPass/FrontPass_R2L_NC_Engine.wav",
-            "label": "FrontPass"},
-    ]
+    raw_data_path = get_raw_data_path()
+    raw_dataset = build_file_index(raw_data_path)
 
-    print("=== PROCESSING DATASET ===")
+    print("=== RAW DATASET ===")
+    print(f"Total indexed files: {len(raw_dataset)}")
 
-    for entry in dataset:
-        file_path = entry["file_path"]
-        label = entry["label"]
-
-        print(f"\n--- File: {file_path} ---")
-
-        # Load raw audio
-        raw_audio, raw_sr = load_audio_file(file_path)
-        print("Raw length:", len(raw_audio), "Raw SR:", raw_sr)
-
-        # Preprocess
-        processed_audio, processed_sr = preprocess_audio(
-            file_path=file_path,
-            target_sr=16000,
-            target_duration=2.0,
-            silence_threshold=500
-        )
-        print("Processed length:", len(processed_audio),
-              "Processed SR:", processed_sr)
-
-        # Extract MFCC features
-        mfcc_vec = extract_mfcc_features(
-            processed_audio, processed_sr, n_mfcc=13)
-        print("MFCC shape:", mfcc_vec.shape)
-        print("MFCC sample:", mfcc_vec[:5], "...")
-
-        # Optional: visualize
-        # visualize_audio_sample(file_path)
-
-    processed_audio, sr = preprocess_audio(
-        file_path="/Users/chancekrueger/Documents/GitHub/EchoRide/data/raw/FrontPass/FrontPass_L2R_HeavyWind.wav",
-        target_sr=16000,
-        target_duration=2.0,
-        silence_threshold=500
-    )
-
-    rms_feat = extract_rms_feature(processed_audio, sr)
-
-    print("RMS feature vector:", rms_feat)
-    print("Shape:", rms_feat.shape)
-
-    processed_audio, sr = preprocess_audio(
-        file_path="/Users/chancekrueger/Documents/GitHub/EchoRide/data/raw/FrontPass/FrontPass_L2R_HeavyWind.wav",
-        target_sr=16000,
-        target_duration=2.0,
-        silence_threshold=500
-    )
-
-    centroid_feat = extract_spectral_centroid_feature(processed_audio, sr)
-
-    print("Spectral centroid feature:", centroid_feat)
-    print("Shape:", centroid_feat.shape)
-
-    zcr_feat = extract_zero_crossing_feature(processed_audio)
-    print("ZCR feature vector:", zcr_feat)
-    print("Shape:", zcr_feat.shape)
-
-    bandwidth_feat = extract_spectral_bandwidth_feature(processed_audio, sr)
-    print("Spectral bandwidth feature:", bandwidth_feat)
-    print("Shape:", bandwidth_feat.shape)
-
-    rolloff_feat = extract_spectral_rolloff_feature(processed_audio, sr)
-    print("Spectral rolloff feature:", rolloff_feat)
-    print("Shape:", rolloff_feat.shape)
-
-    processed_audio, sr = preprocess_audio(
-    file_path="data/raw/FrontPass/FrontPass_L2R_HeavyWind.wav",
-    target_sr=16000,
-    target_duration=2.0,
-    silence_threshold=500
-)
-
-    vec = extract_features_from_audio(processed_audio, sr)
-
-    print("Full feature vector shape:", vec.shape)
-    print("Sample:", vec[:10])
-
-
-    # 1. Preprocess all audio files
     processed_dataset = preprocess_dataset(
-        dataset,
+        raw_dataset,
         target_sr=16000,
         target_duration=2.0,
         silence_threshold=500
     )
-    # 2. Extract features + labels
-    X, y = extract_features_from_dataset(processed_dataset)
 
+    feature_dataset = build_feature_dataset(processed_dataset, n_mfcc=13)
+    summarize_feature_dataset(feature_dataset)
+
+    X, y = extract_features_from_dataset(processed_dataset, n_mfcc=13)
+
+    print("\n=== MODEL-READY DATA ===")
     print("X shape:", X.shape)
     print("y shape:", y.shape)
 
-
-    print("X shape:", X.shape)
-    print("y shape:", y.shape)
-    print("First feature vector:", X[0])
-    print("First label:", y[0])
-
-
-    
-
-    print("\n=== DONE ===")
+    if len(X) > 0:
+        print("First feature vector length:", len(X[0]))
+        print("First label:", y[0])
 
 
 if __name__ == "__main__":
