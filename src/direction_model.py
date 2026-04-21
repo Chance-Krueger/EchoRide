@@ -1,4 +1,6 @@
 from sklearn.preprocessing import LabelEncoder
+from sklearn.model_selection import train_test_split
+
 
 from audio_input import get_raw_data_path, build_file_index
 from preprocessing import preprocess_dataset
@@ -42,6 +44,20 @@ def print_label_mapping(label_encoder):
 
 
 
+# Split dataset into train and test sets using stratification.
+def split_dataset(X, y_encoded, test_size=0.25, random_state=42):
+
+    X_train, X_test, y_train, y_test = train_test_split(
+        X,
+        y_encoded,
+        test_size=test_size,
+        random_state=random_state,
+        stratify=y_encoded
+    )
+
+    return X_train, X_test, y_train, y_test
+
+
 
 
 def main():
@@ -49,25 +65,31 @@ def main():
 
     # Step 1: Build dataset
     X, y = build_model_dataset()
-
     print("X shape:", X.shape)
     print("y shape:", y.shape)
 
     # Step 2: Encode labels
     y_encoded, label_encoder = encode_labels(y)
-
-    print("Encoded labels:", y_encoded)
     print("Classes:", label_encoder.classes_)
 
-    # Step 3: Print mapping
-    print_label_mapping(label_encoder)
+    # Step 3: Split dataset
+    X_train, X_test, y_train, y_test = split_dataset(X, y_encoded)
 
-    # Step 4: Sanity check
-    print("\nFirst feature vector:", X[0])
-    print("Original label:", y[0])
-    print("Encoded label:", y_encoded[0])
+    print("\n=== SPLIT RESULTS ===")
+    print("Train X:", X_train.shape)
+    print("Train y:", y_train.shape)
+    print("Test X:", X_test.shape)
+    print("Test y:", y_test.shape)
 
-    print("=== DONE ===")
+    # Step 4: Class balance check
+    print("\nTrain class counts:", {c: list(y_train).count(c) for c in set(y_train)})
+    print("Test class counts:", {c: list(y_test).count(c) for c in set(y_test)})
+
+    # Step 5: Sanity check sample
+    print("\nSample train label:", y_train[0])
+    print("Sample test label:", y_test[0])
+
+    print("\n=== DONE ===")
 
 
 if __name__ == "__main__":
