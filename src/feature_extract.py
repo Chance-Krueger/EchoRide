@@ -164,6 +164,35 @@ def extract_features_from_dataset(processed_dataset):
 
     return X, y
 
+# Adds a fixed-length feature vector to each processed dataset entry.
+def build_feature_dataset(processed_dataset, n_mfcc=13):
+    
+    feature_dataset = []
+
+    for entry in processed_dataset:
+        audio = entry["audio"]
+        sample_rate = entry["sample_rate"]
+        label = entry["label"]
+        file_path = entry["file_path"]
+
+        feature_vector = extract_features_from_audio(
+            audio,
+            sample_rate,
+            n_mfcc=n_mfcc
+        )
+
+        feature_entry = {
+            "file_path": file_path,
+            "label": label,
+            "sample_rate": sample_rate,
+            "features": feature_vector
+        }
+
+        feature_dataset.append(feature_entry)
+
+    return feature_dataset
+
+
 
 def main():
     dataset = [
