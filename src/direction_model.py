@@ -9,6 +9,7 @@ from sklearn.metrics import accuracy_score, classification_report, confusion_mat
 from audio_input import get_raw_data_path, build_file_index
 from preprocessing import preprocess_dataset
 from feature_extract import extract_features_from_dataset
+from vibration import get_vibration_pattern, simulate_vibration
 
 # Core algorithm that determines direction
 
@@ -173,6 +174,12 @@ def main():
     print("\n=== SAMPLE PREDICTION ===")
     print("True label:", first_true)
     print("Predicted label:", first_pred)
+
+
+    pred_label = label_encoder.inverse_transform([model.predict(X_test[:1])[0]])[0]
+
+    pattern = get_vibration_pattern(pred_label)
+    simulate_vibration(pattern)
 
     return model, label_encoder, results
 

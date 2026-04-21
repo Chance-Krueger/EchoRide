@@ -88,3 +88,21 @@ def simulate_vibration(pattern):
 
     else:
         print("-> Unknown pattern type")
+
+
+
+def main():
+    test_labels = [
+        "FrontPass",
+        "LeftPass",
+        "RightTurn",
+        "RearCrash"
+    ]
+
+    for label in test_labels:
+        pattern = get_vibration_pattern(label)
+        simulate_vibration(pattern)
+
+
+if __name__ == "__main__":
+    main()
