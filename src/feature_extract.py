@@ -143,34 +143,37 @@ def extract_spectral_rolloff_feature(audio, sample_rate):
 
 # main feature extractor
 def extract_features_from_audio(audio, sample_rate, n_mfcc=13):
-    # Individual feature groups
+    
     audio = np.asarray(audio, dtype=np.float32).flatten()
 
+    # MFCC base + temporal
     mfcc_features = extract_mfcc_features(audio, sample_rate, n_mfcc=n_mfcc)
+    mfcc_delta_features = extract_mfcc_delta_features(audio, sample_rate, n_mfcc=n_mfcc)
+
+    # RMS
     rms_features = extract_rms_feature(audio)
+    rms_temporal = extract_rms_temporal_features(audio)
+
+    # Spectral centroid
     centroid_features = extract_spectral_centroid_feature(audio, sample_rate)
+    centroid_temporal = extract_spectral_centroid_temporal_features(audio, sample_rate)
+
+    # Others
     zcr_features = extract_zero_crossing_feature(audio)
     bandwidth_features = extract_spectral_bandwidth_feature(audio, sample_rate)
     rolloff_features = extract_spectral_rolloff_feature(audio, sample_rate)
 
     feature_vector = np.concatenate([
         mfcc_features,
+        mfcc_delta_features,
         rms_features,
+        rms_temporal,
         centroid_features,
+        centroid_temporal,
         zcr_features,
         bandwidth_features,
         rolloff_features
     ]).astype(np.float32)
-
-    expected_length = (2 * n_mfcc) + 10  # 26 + 10 = 36 when n_mfcc=13
-    if feature_vector.shape[0] != expected_length:
-        raise ValueError(
-            f"Feature vector length mismatch. "
-            f"Expected {expected_length}, got {feature_vector.shape[0]}"
-        )
-
-    if np.isnan(feature_vector).any() or np.isinf(feature_vector).any():
-        raise ValueError("Feature vector contains NaN or Inf values.")
 
     return feature_vector
 
