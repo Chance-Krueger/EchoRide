@@ -232,6 +232,20 @@ def summarize_feature_series(series):
     ], dtype=np.float32)
 
 
+# Simple trend over time using a fitted line slope.
+def compute_linear_slope(series):
+    series = np.asarray(series, dtype=np.float32).flatten()
+
+    if len(series) < 2:
+        return np.array([0.0], dtype=np.float32)
+
+    x = np.arange(len(series), dtype=np.float32)
+    slope = np.polyfit(x, series, 1)[0]
+
+    return np.array([slope], dtype=np.float32)
+
+
+
 # Measures change over time: mean(second half) - mean(first half)
 def split_halves_mean_difference(series):
     series = np.asarray(series, dtype=np.float32).flatten()
