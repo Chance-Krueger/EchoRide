@@ -3,7 +3,5 @@ This project builds a system that listens to audio and identifies the direction 
 
 ## NEXT STEPS: 
 
-- Build a dataset
-- Train a direction classifier
 - Evaluate what works and what confuses the model
 - Improve the signal if needed
