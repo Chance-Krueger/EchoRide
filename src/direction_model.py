@@ -125,6 +125,39 @@ def evaluate_model(model, X_test, y_test, label_encoder):
         "y_pred": y_pred
     }
 
+
+# Evaluate the trained SVM model and print: accuracy, classification report, confusion matrix
+def evaluate_scaled_model(model, scaler, X_test, y_test, label_encoder):
+    X_test_scaled = scaler.transform(X_test)
+    y_pred = model.predict(X_test_scaled)
+
+    accuracy = accuracy_score(y_test, y_pred)
+    report = classification_report(
+        y_test,
+        y_pred,
+        target_names=label_encoder.classes_,
+        zero_division=0
+    )
+    cm = confusion_matrix(y_test, y_pred)
+
+    print("\n=== EVALUATION ===")
+    print(f"Accuracy: {accuracy:.4f}\n")
+
+    print("Classification Report:")
+    print(report)
+
+    print("Confusion Matrix:")
+    print(cm)
+
+    return {
+        "accuracy": accuracy,
+        "classification_report": report,
+        "confusion_matrix": cm,
+        "y_pred": y_pred
+    }
+
+
+
 # Predict one sample from a single feature vector.
 def predict_one(model, feature_vector, label_encoder):
 
