@@ -138,43 +138,43 @@ def summarize_split(X_train, X_test, y_train, y_test, label_encoder):
         print(f"  {label_encoder.inverse_transform([label_id])[0]}: {count}")
 
 
-
-
 def main():
-    print("=== Building model dataset ===")
+    print("=== BUILDING DATASET ===")
+    X, y = build_model_dataset(
+        target_sr=16000,
+        target_duration=2.0,
+        silence_threshold=500
+    )
 
-    # Step 1: Build dataset
-    X, y = build_model_dataset()
     print("X shape:", X.shape)
     print("y shape:", y.shape)
 
-    # Step 2: Encode labels
     y_encoded, label_encoder = encode_labels(y)
-    print("Classes:", label_encoder.classes_)
+    print_label_mapping(label_encoder)
 
-    # Step 3: Split dataset
-    X_train, X_test, y_train, y_test = split_dataset(X, y_encoded)
+    X_train, X_test, y_train, y_test = split_dataset(
+        X,
+        y_encoded,
+        test_size=0.25,
+        random_state=42
+    )
 
-    # Step 4: Summarize split
     summarize_split(X_train, X_test, y_train, y_test, label_encoder)
 
-    # Step 5: Train model
-    print("\n=== TRAINING RANDOM FOREST ===")
-    model = train_random_forest(X_train, y_train)
+    print("\n=== TRAINING MODEL ===")
+    model = train_random_forest(X_train, y_train, random_state=42)
 
-    # Step 6: Evaluate model
-    evaluate_model(model, X_test, y_test, label_encoder)
+    results = evaluate_model(model, X_test, y_test, label_encoder)
 
-    # Step 7: Predict one sample
-    print("\n=== SINGLE SAMPLE PREDICTION ===")
-    sample_vector = X_test[0]
-    true_label = label_encoder.inverse_transform([y_test[0]])[0]
-    pred_label = predict_one(model, sample_vector, label_encoder)
+    # Example: inspect the first test prediction
+    first_pred = label_encoder.inverse_transform([model.predict(X_test[:1])[0]])[0]
+    first_true = label_encoder.inverse_transform([y_test[0]])[0]
 
-    print("True Label:     ", true_label)
-    print("Predicted Label:", pred_label)
+    print("\n=== SAMPLE PREDICTION ===")
+    print("True label:", first_true)
+    print("Predicted label:", first_pred)
 
-    print("\n=== DONE ===")
+    return model, label_encoder, results
 
 
 if __name__ == "__main__":
