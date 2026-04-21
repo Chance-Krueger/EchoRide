@@ -120,19 +120,14 @@ def extract_zero_crossing_feature(audio):
 
 # Summarize the spread of frequencies
 def extract_spectral_bandwidth_feature(audio, sample_rate):
-    # Compute spectral bandwidth → shape (1, time_frames)
     bandwidth = librosa.feature.spectral_bandwidth(
         y=audio,
         sr=sample_rate,
         n_fft=1024,
         hop_length=256
-    )[0]  # flatten to (time_frames,)
+    )[0]
 
-    # Mean and std across time
-    bandwidth_mean = np.mean(bandwidth)
-    bandwidth_std = np.std(bandwidth)
-
-    return np.array([bandwidth_mean, bandwidth_std], dtype=np.float32)
+    return summarize_feature_series(bandwidth)
 
 # Summarize the upper-end frequency boundary of most energy
 def extract_spectral_rolloff_feature(audio, sample_rate):
