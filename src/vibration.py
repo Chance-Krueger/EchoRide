@@ -54,5 +54,13 @@ VIBRATION_MAP = {
     }
 }
 
+# Get vibration pattern
+def get_vibration_pattern(label):
+    
+    if label not in VIBRATION_MAP:
+        raise ValueError(f"Unknown label: {label}")
+
+    return VIBRATION_MAP[label]
+
 
 
