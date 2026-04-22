@@ -75,7 +75,7 @@ def load_dataset_arrays(filename=DATASET_CACHE_PATH):
 
 def get_or_build_dataset(
     use_cached_dataset=True,
-    force_rebuild_dataset=True,
+    force_rebuild_dataset=False,
     target_sr=16000,
     target_duration=2.0,
     silence_threshold=500
@@ -329,6 +329,23 @@ def get_or_train_model(
     return model, label_encoder
 
 
+def collapse_to_front_back(y):
+    """
+    Collapse the original 7 labels into 2 classes:
+        Front
+        Back
+    """
+    collapsed = []
+
+    for label in y:
+        if label == "FrontPass":
+            collapsed.append("Front")
+        else:
+            collapsed.append("Back")
+
+    return np.array(collapsed)
+
+
 # ---------------------------------
 # Main
 # ---------------------------------
@@ -351,7 +368,7 @@ def main():
             True  -> ignore saved model and retrain
     """
     use_cached_dataset = True
-    force_rebuild_dataset = True
+    force_rebuild_dataset = False
 
     use_saved_model = True
     force_retrain_model = True
@@ -367,6 +384,12 @@ def main():
 
     print("X shape:", X.shape)
     print("y shape:", y.shape)
+
+    # Collapse to 2 classes
+    y = collapse_to_front_back(y)
+
+    print("\n=== COLLAPSED LABELS ===")
+    print("Unique labels:", np.unique(y))
 
     y_encoded, label_encoder = encode_labels(y)
     print_label_mapping(label_encoder)

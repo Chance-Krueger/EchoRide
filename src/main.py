@@ -1,10 +1,10 @@
 from direction_model import (
-    build_model_dataset,
+    get_or_build_dataset,
+    get_or_train_model,
     encode_labels,
     print_label_mapping,
     split_dataset,
     summarize_split,
-    train_random_forest,
     evaluate_model,
     predict_one
 )
@@ -14,16 +14,29 @@ from vibration import (
     simulate_vibration
 )
 
+import numpy as np
 
-# Entry point: loads audio, runs algorithm, prints direction
+
+def collapse_to_front_back(y):
+    return np.array([
+        "Front" if label == "FrontPass" else "Back"
+        for label in y
+    ])
 
 
 def main():
+    use_cached_dataset = True
+    force_rebuild_dataset = False
+
+    use_saved_model = True
+    force_retrain_model = False
+
     print("=== ECHORIDE PIPELINE START ===")
 
-    # 1. Build dataset
-    print("\n=== BUILDING DATASET ===")
-    X, y = build_model_dataset(
+    print("\n=== BUILDING / LOADING DATASET ===")
+    X, y = get_or_build_dataset(
+        use_cached_dataset=use_cached_dataset,
+        force_rebuild_dataset=force_rebuild_dataset,
         target_sr=16000,
         target_duration=2.0,
         silence_threshold=500
@@ -32,11 +45,14 @@ def main():
     print("X shape:", X.shape)
     print("y shape:", y.shape)
 
-    # 2. Encode labels
+    y = collapse_to_front_back(y)
+
+    print("\n=== COLLAPSED LABELS ===")
+    print("Unique labels:", np.unique(y))
+
     y_encoded, label_encoder = encode_labels(y)
     print_label_mapping(label_encoder)
 
-    # 3. Split dataset
     X_train, X_test, y_train, y_test = split_dataset(
         X,
         y_encoded,
@@ -46,27 +62,26 @@ def main():
 
     summarize_split(X_train, X_test, y_train, y_test, label_encoder)
 
-    # 4. Train model
-    print("\n=== TRAINING MODEL ===")
-    model = train_random_forest(X_train, y_train, random_state=42)
+    model, model_label_encoder = get_or_train_model(
+        X_train=X_train,
+        y_train=y_train,
+        label_encoder=label_encoder,
+        use_saved_model=use_saved_model,
+        force_retrain_model=force_retrain_model
+    )
 
-    # 5. Evaluate model
-    results = evaluate_model(model, X_test, y_test, label_encoder)
+    results = evaluate_model(model, X_test, y_test, model_label_encoder)
 
-    # 6. Predict one sample from test set
     print("\n=== SAMPLE PREDICTION ===")
     sample_vector = X_test[0]
-    true_label = label_encoder.inverse_transform([y_test[0]])[0]
-    predicted_label = predict_one(model, sample_vector, label_encoder)
+    true_label = model_label_encoder.inverse_transform([y_test[0]])[0]
+    predicted_label = predict_one(model, sample_vector, model_label_encoder)
 
     print("True label:     ", true_label)
     print("Predicted label:", predicted_label)
 
-    # 7. Map prediction to vibration pattern
     print("\n=== VIBRATION MAPPING ===")
     vibration_pattern = get_vibration_pattern(predicted_label)
-
-    # 8. Simulate vibration output
     simulate_vibration(vibration_pattern)
 
     print("\n=== ECHORIDE PIPELINE COMPLETE ===")

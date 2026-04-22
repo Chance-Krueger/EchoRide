@@ -1,70 +1,33 @@
-# Maps direction → vibration pattern
+# Maps detection → vibration pattern
 
-
-
-# Core mapping
+# Only BACK triggers vibration
 VIBRATION_MAP = {
-    "FrontPass": {
-        "side": "front",
-        "pattern": "smooth",
-        "intensity": 0.5,
-        "duration": 1.5
-    },
-
-    "LeftPass": {
-        "side": "left",
-        "pattern": "smooth",
-        "intensity": 0.6,
-        "duration": 1.5
-    },
-
-    "RightPass": {
-        "side": "right",
-        "pattern": "smooth",
-        "intensity": 0.6,
-        "duration": 1.5
-    },
-
-    "RearPass": {
+    "Back": {
         "side": "rear",
-        "pattern": "smooth",
-        "intensity": 0.6,
-        "duration": 1.5
-    },
-
-    "LeftTurn": {
-        "side": "left",
         "pattern": "pulse",
         "intensity": 0.8,
-        "duration": 2.0
+        "duration": 1.5
     },
 
-    "RightTurn": {
-        "side": "right",
-        "pattern": "pulse",
-        "intensity": 0.8,
-        "duration": 2.0
-    },
-
-    "RearCrash": {
-        "side": "rear",
-        "pattern": "burst",
-        "intensity": 1.0,
-        "duration": 1.0
-    }
+    # Front = NO vibration (important safety decision)
+    "Front": None
 }
+
 
 # Get vibration pattern
 def get_vibration_pattern(label):
-
     if label not in VIBRATION_MAP:
         raise ValueError(f"Unknown label: {label}")
 
     return VIBRATION_MAP[label]
 
 
-# Simulates what the vibration would feel like (prints it). Replace this later with hardware control.
+# Simulates vibration (replace with hardware later)
 def simulate_vibration(pattern):
+    if pattern is None:
+        print("\n=== NO VIBRATION ===")
+        print("Reason: Oncoming traffic (safe to ignore)")
+        return
 
     side = pattern["side"]
     pattern_type = pattern["pattern"]
@@ -81,22 +44,19 @@ def simulate_vibration(pattern):
         print("-> Continuous vibration")
 
     elif pattern_type == "pulse":
-        print("-> Pulsing vibration (on/off rhythm)")
+        print("-> Pulsing vibration (warning signal)")
 
     elif pattern_type == "burst":
-        print("-> Rapid alert bursts")
+        print("-> Rapid alert bursts (high urgency)")
 
     else:
         print("-> Unknown pattern type")
 
 
-
 def main():
     test_labels = [
-        "FrontPass",
-        "LeftPass",
-        "RightTurn",
-        "RearCrash"
+        "Front",   # should NOT vibrate
+        "Back",    # should vibrate
     ]
 
     for label in test_labels:
