@@ -4,7 +4,7 @@ import soundfile as sf
 import librosa
 import numpy as np
 
-
+GLOABAL = 0
 
 # Noise reduction, filtering, normalization
 
@@ -68,24 +68,24 @@ def convert_to_mono(audio):
 
 # Remove unnecessary quiet sections at the beginning and end.
 def trim_silence(audio, threshold):
-    # Ensure mono
+    global GLOABAL
+    # Use mono ONLY for detecting silence
     if audio.ndim > 1:
-        audio = audio.mean(axis=1)
+        mono = audio.mean(axis=1)
+    else:
+        mono = audio
 
-    # Absolute amplitude
-    abs_audio = np.abs(audio)
-
-    # Find indices where audio is above threshold
+    abs_audio = np.abs(mono)
     above_thresh = np.where(abs_audio > threshold)[0]
 
-    # If nothing is above threshold, return original
     if len(above_thresh) == 0:
+        GLOABAL+= 1
+        print(GLOABAL)
         return audio
 
     start = above_thresh[0]
-    end = above_thresh[-1] + 1  # include last sample
+    end = above_thresh[-1] + 1
 
-    # trimmed_audio
     return audio[start:end]
 
 
@@ -128,7 +128,7 @@ def preprocess_audio(file_path, target_sr, target_duration, silence_threshold=50
     audio, sample_rate = load_audio_file(file_path)
 
     # 2. Convert to mono
-    audio = convert_to_mono(audio)
+    # audio = convert_to_mono(audio)
 
     # 3. Trim silence BEFORE resampling (threshold is based on original amplitude)
     audio = trim_silence(audio, threshold=silence_threshold)
@@ -196,9 +196,9 @@ def main():
     print("Max amplitude:", np.max(np.abs(processed_audio)))
 
     # NEW: Charts
-    plot_waveform(processed_audio, sr, "Processed Waveform")
-    plot_spectrogram(processed_audio, sr, "Processed Audio Spectrogram")
-    plot_mel_spectrogram(processed_audio, sr, "Processed Mel Spectrogram")
+    # plot_waveform(processed_audio, sr, "Processed Waveform")
+    # plot_spectrogram(processed_audio, sr, "Processed Audio Spectrogram")
+    # plot_mel_spectrogram(processed_audio, sr, "Processed Mel Spectrogram")
 
 
 

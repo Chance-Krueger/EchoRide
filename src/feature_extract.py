@@ -143,39 +143,104 @@ def extract_spectral_rolloff_feature(audio, sample_rate):
 
 # main feature extractor
 def extract_features_from_audio(audio, sample_rate, n_mfcc=13):
-    
-    audio = np.asarray(audio, dtype=np.float32).flatten()
+    audio = np.asarray(audio, dtype=np.float32)
 
-    # MFCC base + temporal
-    mfcc_features = extract_mfcc_features(audio, sample_rate, n_mfcc=n_mfcc)
-    mfcc_delta_features = extract_mfcc_delta_features(audio, sample_rate, n_mfcc=n_mfcc)
+    # ---------------------------------
+    # MONO CASE (handles BOTH (n,) and (n,1))
+    # ---------------------------------
+    if audio.ndim == 1 or (audio.ndim == 2 and audio.shape[1] == 1):
+        mono = audio.flatten()
 
-    # RMS
-    rms_features = extract_rms_feature(audio)
-    rms_temporal = extract_rms_temporal_features(audio)
+        mfcc_features = extract_mfcc_features(mono, sample_rate, n_mfcc=n_mfcc)
+        mfcc_delta_features = extract_mfcc_delta_features(mono, sample_rate, n_mfcc=n_mfcc)
 
-    # Spectral centroid
-    centroid_features = extract_spectral_centroid_feature(audio, sample_rate)
-    centroid_temporal = extract_spectral_centroid_temporal_features(audio, sample_rate)
+        rms_features = extract_rms_feature(mono)
+        rms_temporal = extract_rms_temporal_features(mono)
 
-    # Others
-    zcr_features = extract_zero_crossing_feature(audio)
-    bandwidth_features = extract_spectral_bandwidth_feature(audio, sample_rate)
-    rolloff_features = extract_spectral_rolloff_feature(audio, sample_rate)
+        centroid_features = extract_spectral_centroid_feature(mono, sample_rate)
+        centroid_temporal = extract_spectral_centroid_temporal_features(mono, sample_rate)
 
-    feature_vector = np.concatenate([
-        mfcc_features,
-        mfcc_delta_features,
-        rms_features,
-        rms_temporal,
-        centroid_features,
-        centroid_temporal,
-        zcr_features,
-        bandwidth_features,
-        rolloff_features
-    ]).astype(np.float32)
+        zcr_features = extract_zero_crossing_feature(mono)
+        bandwidth_features = extract_spectral_bandwidth_feature(mono, sample_rate)
+        rolloff_features = extract_spectral_rolloff_feature(mono, sample_rate)
 
-    return feature_vector
+        rms_peak_pos = extract_rms_peak_position_feature(mono)
+        centroid_peak_pos = extract_centroid_peak_position_feature(mono, sample_rate)
+        rms_half_ratio = extract_rms_half_ratio_feature(mono)
+
+        feature_vector = np.concatenate([
+            mfcc_features,
+            mfcc_delta_features,
+            rms_features,
+            rms_temporal,
+            rms_peak_pos,
+            rms_half_ratio,
+            centroid_features,
+            centroid_temporal,
+            centroid_peak_pos,
+            zcr_features,
+            bandwidth_features,
+            rolloff_features
+        ]).astype(np.float32)
+
+        return feature_vector
+
+    # ---------------------------------
+    # STEREO CASE (true stereo: (n,2))
+    # ---------------------------------
+    elif audio.ndim == 2 and audio.shape[1] >= 2:
+        left = audio[:, 0]
+        right = audio[:, 1]
+
+        # Extract features separately
+        left_features = extract_features_from_audio(left, sample_rate, n_mfcc=n_mfcc)
+        right_features = extract_features_from_audio(right, sample_rate, n_mfcc=n_mfcc)
+
+        # Channel difference features
+        left_rms = librosa.feature.rms(y=left, frame_length=1024, hop_length=256)[0]
+        right_rms = librosa.feature.rms(y=right, frame_length=1024, hop_length=256)[0]
+
+        rms_diff_mean = np.mean(left_rms - right_rms)
+        rms_diff_std = np.std(left_rms - right_rms)
+
+        left_centroid = librosa.feature.spectral_centroid(
+            y=left, sr=sample_rate, n_fft=1024, hop_length=256
+        )[0]
+        right_centroid = librosa.feature.spectral_centroid(
+            y=right, sr=sample_rate, n_fft=1024, hop_length=256
+        )[0]
+
+        centroid_diff_mean = np.mean(left_centroid - right_centroid)
+        centroid_diff_std = np.std(left_centroid - right_centroid)
+
+        left_energy = np.mean(np.abs(left))
+        right_energy = np.mean(np.abs(right))
+
+        energy_ratio = left_energy / (right_energy + 1e-8)
+        energy_diff = left_energy - right_energy
+
+        diff_features = np.array([
+            rms_diff_mean,
+            rms_diff_std,
+            centroid_diff_mean,
+            centroid_diff_std,
+            energy_ratio,
+            energy_diff
+        ], dtype=np.float32)
+
+        feature_vector = np.concatenate([
+            left_features,
+            right_features,
+            diff_features
+        ]).astype(np.float32)
+
+        return feature_vector
+
+    # ---------------------------------
+    # ERROR CASE
+    # ---------------------------------
+    else:
+        raise ValueError(f"Unexpected audio shape: {audio.shape}")
 
 # Take the processed dataset and convert it into model-ready data
 def extract_features_from_dataset(processed_dataset, n_mfcc=13):
@@ -232,6 +297,107 @@ def build_feature_dataset(processed_dataset, n_mfcc=13):
         feature_dataset.append(feature_entry)
 
     return feature_dataset
+
+# def extract_features_from_audio(audio, sample_rate, n_mfcc=13):
+#     audio = np.asarray(audio, dtype=np.float32)
+
+#     # MONO CASE
+#     if audio.ndim == 1:
+#         mono = audio.flatten()
+
+#         mfcc_features = extract_mfcc_features(mono, sample_rate, n_mfcc=n_mfcc)
+#         mfcc_delta_features = extract_mfcc_delta_features(mono, sample_rate, n_mfcc=n_mfcc)
+
+#         rms_features = extract_rms_feature(mono)
+#         rms_temporal = extract_rms_temporal_features(mono)
+
+#         centroid_features = extract_spectral_centroid_feature(mono, sample_rate)
+#         centroid_temporal = extract_spectral_centroid_temporal_features(mono, sample_rate)
+
+#         zcr_features = extract_zero_crossing_feature(mono)
+#         bandwidth_features = extract_spectral_bandwidth_feature(mono, sample_rate)
+#         rolloff_features = extract_spectral_rolloff_feature(mono, sample_rate)
+
+#         feature_vector = np.concatenate([
+#             mfcc_features,
+#             mfcc_delta_features,
+#             rms_features,
+#             rms_temporal,
+#             centroid_features,
+#             centroid_temporal,
+#             zcr_features,
+#             bandwidth_features,
+#             rolloff_features
+#         ]).astype(np.float32)
+
+#         return feature_vector
+
+#     # STEREO CASE
+#     elif audio.ndim == 2 and audio.shape[1] >= 2:
+#         left = audio[:, 0]
+#         right = audio[:, 1]
+
+#         left_features = extract_features_from_audio(left, sample_rate, n_mfcc=n_mfcc)
+#         right_features = extract_features_from_audio(right, sample_rate, n_mfcc=n_mfcc)
+#         diff_features = extract_channel_difference_features(audio)
+
+#         feature_vector = np.concatenate([
+#             left_features,
+#             right_features,
+#             diff_features
+#         ]).astype(np.float32)
+
+#         return feature_vector
+
+#     else:
+#         raise ValueError(f"Unexpected audio shape: {audio.shape}")
+    
+
+
+def extract_channel_difference_features(audio):
+    """
+    Stereo-only directional features.
+    Assumes audio shape is (num_samples, 2)
+    """
+    if audio.ndim == 1 or audio.shape[1] < 2:
+        return np.zeros(6, dtype=np.float32)
+
+    left = audio[:, 0].astype(np.float32)
+    right = audio[:, 1].astype(np.float32)
+
+    left_rms = librosa.feature.rms(y=left, frame_length=1024, hop_length=256)[0]
+    right_rms = librosa.feature.rms(y=right, frame_length=1024, hop_length=256)[0]
+
+    rms_diff_mean = np.mean(left_rms - right_rms)
+    rms_diff_std = np.std(left_rms - right_rms)
+
+    left_centroid = librosa.feature.spectral_centroid(
+        y=left, sr=16000, n_fft=1024, hop_length=256
+    )[0]
+    right_centroid = librosa.feature.spectral_centroid(
+        y=right, sr=16000, n_fft=1024, hop_length=256
+    )[0]
+
+    centroid_diff_mean = np.mean(left_centroid - right_centroid)
+    centroid_diff_std = np.std(left_centroid - right_centroid)
+
+    left_energy = np.mean(np.abs(left))
+    right_energy = np.mean(np.abs(right))
+
+    energy_ratio = left_energy / (right_energy + 1e-8)
+    energy_diff = left_energy - right_energy
+
+    return np.array([
+        rms_diff_mean,
+        rms_diff_std,
+        centroid_diff_mean,
+        centroid_diff_std,
+        energy_ratio,
+        energy_diff
+    ], dtype=np.float32)
+
+
+
 
 # Helps summarize data
 def summarize_feature_dataset(feature_dataset):
@@ -298,6 +464,67 @@ def split_halves_mean_difference(series):
     return np.array([diff], dtype=np.float32)
 
 
+# does the sound peak early, middle, or late
+def extract_rms_peak_position_feature(audio):
+    rms = librosa.feature.rms(
+        y=audio,
+        frame_length=1024,
+        hop_length=256
+    )[0]
+
+    if len(rms) == 0:
+        return np.array([0.0], dtype=np.float32)
+
+    peak_idx = np.argmax(rms)
+    peak_pos_normalized = peak_idx / max(len(rms) - 1, 1)
+
+    return np.array([peak_pos_normalized], dtype=np.float32)
+
+
+# when is the sound brightest/sharpest
+def extract_centroid_peak_position_feature(audio, sample_rate):
+    centroid = librosa.feature.spectral_centroid(
+        y=audio,
+        sr=sample_rate,
+        n_fft=1024,
+        hop_length=256
+    )[0]
+
+    if len(centroid) == 0:
+        return np.array([0.0], dtype=np.float32)
+
+    peak_idx = np.argmax(centroid)
+    peak_pos_normalized = peak_idx / max(len(centroid) - 1, 1)
+
+    return np.array([peak_pos_normalized], dtype=np.float32)
+
+
+# Early-vs-late energy ratio
+def extract_rms_half_ratio_feature(audio):
+    rms = librosa.feature.rms(
+        y=audio,
+        frame_length=1024,
+        hop_length=256
+    )[0]
+
+    if len(rms) < 2:
+        return np.array([1.0], dtype=np.float32)
+
+    midpoint = len(rms) // 2
+    first_half = rms[:midpoint]
+    second_half = rms[midpoint:]
+
+    if len(first_half) == 0 or len(second_half) == 0:
+        return np.array([1.0], dtype=np.float32)
+
+    first_mean = np.mean(first_half)
+    second_mean = np.mean(second_half)
+
+    ratio = second_mean / (first_mean + 1e-8)
+
+    return np.array([ratio], dtype=np.float32)
+
+
 
 def main():
     raw_data_path = get_raw_data_path()
@@ -316,7 +543,7 @@ def main():
     feature_dataset = build_feature_dataset(processed_dataset, n_mfcc=13)
     summarize_feature_dataset(feature_dataset)
 
-    X, y = extract_features_from_dataset(processed_dataset, n_mfcc=13)
+    # X, y = extract_features_from_dataset(processed_dataset, n_mfcc=13)
 
     print("\n=== MODEL-READY DATA ===")
     print("X shape:", X.shape)
