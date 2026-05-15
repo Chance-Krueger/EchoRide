@@ -13,9 +13,9 @@ EchoRide uses a multi-stage simulation and machine learning pipeline:
 1. Unity generates labeled directional traffic scenarios
 2. WAV recordings are generated automatically
 3. Audio recordings are preprocessed and standardized
-4. Audio features are extracted
-5. A machine learning classifier predicts vehicle direction
-6. A simulated cyclist vibration alert is generated
+4. Wav2Vec2 audio embeddings are extracted
+5. A Deep Neural Network (DNN) classifier predicts vehicle direction
+6. 6. A simulated cyclist vibration alert is generated
 
 Current direction classes include:
 - FrontPass
@@ -195,9 +195,11 @@ Current pipeline stages:
 - vibration mapping
 
 The project currently supports experimentation with:
-- synthetic audio datasets
-- direction classification
+- synthetic traffic audio datasets
+- Wav2Vec2 audio feature extraction
+- directional audio classification
 - cyclist alert mapping
+- simulation based machine learning experimentation
 
 ---
 
