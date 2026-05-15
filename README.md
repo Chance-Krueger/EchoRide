@@ -27,15 +27,20 @@ Current direction classes include:
 - RearCrash
 
 # Project Structure
+
 ```
 EchoRide/
 ├── src/
 │   ├── guiApp.py
 │   ├── predictor.py
+│   ├── audio_input.py
 │   ├── preprocessing.py
+│   ├── wav2vec_features.py
 │   ├── feature_extract.py
+│   ├── label_mapping.py
 │   ├── direction_model.py
 │   ├── vibration.py
+│   ├── visualization.py
 │   └── main.py
 ├── data/
 │   ├── raw/
@@ -47,6 +52,7 @@ EchoRide/
 ├── requirements.txt
 └── README.md
 ```
+
 
 # Unity Simulation
 
