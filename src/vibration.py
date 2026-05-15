@@ -1,52 +1,26 @@
-# Maps direction → vibration pattern
-
-
-
-# Core mapping
 VIBRATION_MAP = {
-    "FrontPass": {
+    "Front": {
         "side": "front",
         "pattern": "smooth",
         "intensity": 0.5,
         "duration": 1.5
     },
 
-    "LeftPass": {
-        "side": "left",
-        "pattern": "smooth",
-        "intensity": 0.6,
-        "duration": 1.5
-    },
-
-    "RightPass": {
-        "side": "right",
-        "pattern": "smooth",
-        "intensity": 0.6,
-        "duration": 1.5
-    },
-
-    "RearPass": {
-        "side": "rear",
-        "pattern": "smooth",
-        "intensity": 0.6,
-        "duration": 1.5
-    },
-
-    "LeftTurn": {
+    "Left": {
         "side": "left",
         "pattern": "pulse",
         "intensity": 0.8,
         "duration": 2.0
     },
 
-    "RightTurn": {
+    "Right": {
         "side": "right",
         "pattern": "pulse",
         "intensity": 0.8,
         "duration": 2.0
     },
 
-    "RearCrash": {
+    "Back": {
         "side": "rear",
         "pattern": "burst",
         "intensity": 1.0,
@@ -54,18 +28,15 @@ VIBRATION_MAP = {
     }
 }
 
-# Get vibration pattern
-def get_vibration_pattern(label):
 
+def get_vibration_pattern(label):
     if label not in VIBRATION_MAP:
         raise ValueError(f"Unknown label: {label}")
 
     return VIBRATION_MAP[label]
 
 
-# Simulates what the vibration would feel like (prints it). Replace this later with hardware control.
 def simulate_vibration(pattern):
-
     side = pattern["side"]
     pattern_type = pattern["pattern"]
     intensity = pattern["intensity"]
@@ -81,23 +52,17 @@ def simulate_vibration(pattern):
         print("-> Continuous vibration")
 
     elif pattern_type == "pulse":
-        print("-> Pulsing vibration (on/off rhythm)")
+        print("-> Pulsing vibration")
 
     elif pattern_type == "burst":
         print("-> Rapid alert bursts")
 
     else:
-        print("-> Unknown pattern type")
-
+        print("-> Unknown vibration pattern")
 
 
 def main():
-    test_labels = [
-        "FrontPass",
-        "LeftPass",
-        "RightTurn",
-        "RearCrash"
-    ]
+    test_labels = ["Front", "Left", "Right", "Back"]
 
     for label in test_labels:
         pattern = get_vibration_pattern(label)

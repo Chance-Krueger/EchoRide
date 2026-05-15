@@ -2,240 +2,365 @@ from pathlib import Path
 import joblib
 import numpy as np
 
-from sklearn.preprocessing import LabelEncoder
-from sklearn.model_selection import train_test_split
-from sklearn.ensemble import RandomForestClassifier
-from sklearn.metrics import accuracy_score, classification_report, confusion_matrix
+import torch
+import torch.nn as nn
+import torch.optim as optim
 
-from audio_input import get_raw_data_path, build_file_index
+from sklearn.preprocessing import (
+    LabelEncoder,
+    StandardScaler
+)
+
+from sklearn.model_selection import train_test_split
+
+from sklearn.metrics import (
+    accuracy_score,
+    classification_report,
+    confusion_matrix
+)
+
+from audio_input import (
+    get_raw_data_path,
+    build_file_index
+)
+
 from preprocessing import preprocess_dataset
 from feature_extract import extract_features_from_dataset
 
 
-# ---------------------------------
-# Paths for saved artifacts
-# ---------------------------------
-
 BASE_DIR = Path(__file__).resolve().parent.parent
+
 MODELS_DIR = BASE_DIR / "models"
 MODELS_DIR.mkdir(exist_ok=True)
 
-DATASET_CACHE_PATH = MODELS_DIR / "direction_dataset.npz"
-MODEL_BUNDLE_PATH = MODELS_DIR / "forest_direction_model.joblib"
+DATASET_CACHE_PATH = (
+    MODELS_DIR / "wav2vec_direction_dataset.npz"
+)
+
+MODEL_BUNDLE_PATH = (
+    MODELS_DIR / "dnn_direction_model.joblib"
+)
+
+DEVICE = torch.device(
+    "cuda" if torch.cuda.is_available() else "cpu"
+)
 
 
-# ---------------------------------
-# Dataset preparation
-# ---------------------------------
+class DirectionDNN(nn.Module):
 
-def build_model_dataset(target_sr=16000, target_duration=2.0, silence_threshold=500):
-    """
-    Full pipeline:
-        1. Index raw files
-        2. Preprocess audio
-        3. Extract features
-        4. Return X and y
-    """
+    def __init__(self, input_dim, num_classes):
+
+        super().__init__()
+
+        self.network = nn.Sequential(
+
+            nn.Linear(input_dim, 1024),
+            nn.BatchNorm1d(1024),
+            nn.ReLU(),
+            nn.Dropout(0.4),
+
+            nn.Linear(1024, 512),
+            nn.BatchNorm1d(512),
+            nn.ReLU(),
+            nn.Dropout(0.3),
+
+            nn.Linear(512, 256),
+            nn.ReLU(),
+            nn.Dropout(0.2),
+
+            nn.Linear(256, num_classes)
+        )
+
+    def forward(self, x):
+        return self.network(x)
+
+
+def build_model_dataset(
+    target_sr=16000,
+    target_duration=2.0
+):
+
     raw_data_path = get_raw_data_path()
-    raw_dataset = build_file_index(raw_data_path)
+
+    raw_dataset = build_file_index(
+        raw_data_path=raw_data_path,
+        use_mapped_labels=True
+    )
 
     processed_dataset = preprocess_dataset(
         raw_dataset,
         target_sr=target_sr,
         target_duration=target_duration,
-        silence_threshold=silence_threshold
+        force_mono=False,
+        augment=True
     )
 
-    X, y = extract_features_from_dataset(processed_dataset)
+    X, y = extract_features_from_dataset(
+        processed_dataset
+    )
+
     return X, y
 
 
-def save_dataset_arrays(X, y, filename=DATASET_CACHE_PATH):
-    """
-    Save model-ready dataset arrays.
-    """
-    np.savez(filename, X=X, y=y)
-    print(f"Saved dataset arrays to: {filename}")
+def save_dataset_arrays(X, y):
+
+    np.savez(
+        DATASET_CACHE_PATH,
+        X=X,
+        y=y
+    )
+
+    print(
+        f"Saved dataset arrays to: "
+        f"{DATASET_CACHE_PATH}"
+    )
 
 
-def load_dataset_arrays(filename=DATASET_CACHE_PATH):
-    """
-    Load cached model-ready dataset arrays.
-    """
-    if not Path(filename).exists():
-        raise FileNotFoundError(f"No saved dataset found at: {filename}")
+def load_dataset_arrays():
 
-    data = np.load(filename, allow_pickle=True)
+    data = np.load(
+        DATASET_CACHE_PATH,
+        allow_pickle=True
+    )
+
     X = data["X"]
     y = data["y"]
 
-    print(f"Loaded dataset arrays from: {filename}")
+    print(
+        f"Loaded dataset arrays from: "
+        f"{DATASET_CACHE_PATH}"
+    )
+
     return X, y
 
 
 def get_or_build_dataset(
     use_cached_dataset=True,
-    force_rebuild_dataset=True,
+    force_rebuild_dataset=False,
     target_sr=16000,
-    target_duration=2.0,
-    silence_threshold=500
+    target_duration=2.0
 ):
-    """
-    Either load saved X/y or rebuild them from raw audio.
-    """
-    if use_cached_dataset and not force_rebuild_dataset and DATASET_CACHE_PATH.exists():
-        return load_dataset_arrays(DATASET_CACHE_PATH)
 
-    print("Building dataset from raw audio...")
-    X, y = build_model_dataset(
-        target_sr=target_sr,
-        target_duration=target_duration,
-        silence_threshold=silence_threshold
+    if (
+        use_cached_dataset
+        and not force_rebuild_dataset
+        and DATASET_CACHE_PATH.exists()
+    ):
+
+        return load_dataset_arrays()
+
+    print(
+        "Building dataset from raw audio "
+        "using Wav2Vec features..."
     )
 
-    save_dataset_arrays(X, y, DATASET_CACHE_PATH)
+    X, y = build_model_dataset(
+        target_sr=target_sr,
+        target_duration=target_duration
+    )
+
+    save_dataset_arrays(X, y)
+
     return X, y
 
 
-# ---------------------------------
-# Label encoding
-# ---------------------------------
-
 def encode_labels(y):
-    """
-    Convert string labels into numeric class IDs.
-    """
+
     label_encoder = LabelEncoder()
+
     y_encoded = label_encoder.fit_transform(y)
+
     return y_encoded, label_encoder
 
 
 def print_label_mapping(label_encoder):
+
     print("\n=== LABEL MAPPING ===")
-    for idx, label in enumerate(label_encoder.classes_):
+
+    for idx, label in enumerate(
+        label_encoder.classes_
+    ):
+
         print(f"{idx}: {label}")
 
 
-# ---------------------------------
-# Train/test split
-# ---------------------------------
+def split_dataset(
+    X,
+    y_encoded,
+    test_size=0.10,
+    random_state=42
+):
 
-def split_dataset(X, y_encoded, test_size=0.25, random_state=42):
-    """
-    Split dataset into train and test sets using stratification.
-    """
-    X_train, X_test, y_train, y_test = train_test_split(
-        X,
+    scaler = StandardScaler()
+
+    X_scaled = scaler.fit_transform(X)
+
+    return train_test_split(
+        X_scaled,
         y_encoded,
         test_size=test_size,
         random_state=random_state,
         stratify=y_encoded
     )
 
-    return X_train, X_test, y_train, y_test
 
+def summarize_split(
+    X_train,
+    X_test,
+    y_train,
+    y_test,
+    label_encoder
+):
 
-def summarize_split(X_train, X_test, y_train, y_test, label_encoder):
     print("\n=== DATA SPLIT SUMMARY ===")
+
     print("X_train shape:", X_train.shape)
     print("X_test shape:", X_test.shape)
+
     print("y_train shape:", y_train.shape)
     print("y_test shape:", y_test.shape)
 
     print("\nTrain label counts:")
-    unique_train, counts_train = np.unique(y_train, return_counts=True)
-    for label_id, count in zip(unique_train, counts_train):
-        print(f"  {label_encoder.inverse_transform([label_id])[0]}: {count}")
 
-    print("\nTest label counts:")
-    unique_test, counts_test = np.unique(y_test, return_counts=True)
-    for label_id, count in zip(unique_test, counts_test):
-        print(f"  {label_encoder.inverse_transform([label_id])[0]}: {count}")
-
-
-# ---------------------------------
-# Model training
-# ---------------------------------
-
-def train_random_forest(X_train, y_train, random_state=42):
-    """
-    Train a baseline Random Forest classifier.
-    """
-    model = RandomForestClassifier(
-        n_estimators=200,
-        random_state=random_state,
-        class_weight="balanced"
+    unique_train, counts_train = np.unique(
+        y_train,
+        return_counts=True
     )
 
-    model.fit(X_train, y_train)
+    for label_id, count in zip(
+        unique_train,
+        counts_train
+    ):
+
+        label = label_encoder.inverse_transform(
+            [label_id]
+        )[0]
+
+        print(f"{label}: {count}")
+
+    print("\nTest label counts:")
+
+    unique_test, counts_test = np.unique(
+        y_test,
+        return_counts=True
+    )
+
+    for label_id, count in zip(
+        unique_test,
+        counts_test
+    ):
+
+        label = label_encoder.inverse_transform(
+            [label_id]
+        )[0]
+
+        print(f"{label}: {count}")
+
+
+def train_dnn(
+    X_train,
+    y_train,
+    input_dim,
+    num_classes,
+    epochs=200,
+    learning_rate=0.0003
+):
+
+    X_train_tensor = torch.tensor(
+        X_train,
+        dtype=torch.float32
+    ).to(DEVICE)
+
+    y_train_tensor = torch.tensor(
+        y_train,
+        dtype=torch.long
+    ).to(DEVICE)
+
+    model = DirectionDNN(
+        input_dim=input_dim,
+        num_classes=num_classes
+    ).to(DEVICE)
+
+    criterion = nn.CrossEntropyLoss()
+
+    optimizer = optim.Adam(
+        model.parameters(),
+        lr=learning_rate
+    )
+
+    print("\n=== TRAINING DNN ===")
+    print("Device:", DEVICE)
+
+    for epoch in range(epochs):
+
+        model.train()
+
+        optimizer.zero_grad()
+
+        outputs = model(X_train_tensor)
+
+        loss = criterion(
+            outputs,
+            y_train_tensor
+        )
+
+        loss.backward()
+
+        optimizer.step()
+
+        print(
+            f"Epoch {epoch + 1}/{epochs} "
+            f"| Loss: {loss.item():.4f}"
+        )
+
     return model
 
 
-# ---------------------------------
-# Model save/load
-# ---------------------------------
-
-def save_model_bundle(
+def evaluate_model(
     model,
-    label_encoder,
-    filename=MODEL_BUNDLE_PATH,
-    model_name="RandomForest",
-    scaler=None,
-    metadata=None
+    X_test,
+    y_test,
+    label_encoder
 ):
-    """
-    Save trained model state.
-    """
-    bundle = {
-        "model": model,
-        "label_encoder": label_encoder,
-        "scaler": scaler,
-        "model_name": model_name,
-        "metadata": metadata or {}
-    }
 
-    joblib.dump(bundle, filename)
-    print(f"Saved model bundle to: {filename}")
+    model.eval()
 
+    X_test_tensor = torch.tensor(
+        X_test,
+        dtype=torch.float32
+    ).to(DEVICE)
 
-def load_model_bundle(filename=MODEL_BUNDLE_PATH):
-    """
-    Load previously saved model state.
-    """
-    if not Path(filename).exists():
-        raise FileNotFoundError(f"No saved model found at: {filename}")
+    with torch.no_grad():
 
-    bundle = joblib.load(filename)
-    print(f"Loaded model bundle from: {filename}")
-    return bundle
+        outputs = model(X_test_tensor)
 
+        y_pred = torch.argmax(
+            outputs,
+            dim=1
+        ).cpu().numpy()
 
-# ---------------------------------
-# Evaluation
-# ---------------------------------
+    accuracy = accuracy_score(
+        y_test,
+        y_pred
+    )
 
-def evaluate_model(model, X_test, y_test, label_encoder):
-    """
-    Evaluate the trained model and print:
-        - accuracy
-        - classification report
-        - confusion matrix
-    """
-    y_pred = model.predict(X_test)
-
-    accuracy = accuracy_score(y_test, y_pred)
     report = classification_report(
         y_test,
         y_pred,
         target_names=label_encoder.classes_,
         zero_division=0
     )
-    cm = confusion_matrix(y_test, y_pred)
+
+    cm = confusion_matrix(
+        y_test,
+        y_pred
+    )
 
     print("\n=== EVALUATION ===")
-    print(f"Accuracy: {accuracy:.4f}\n")
 
-    print("Classification Report:")
+    print(f"Accuracy: {accuracy:.4f}")
+
+    print("\nClassification Report:")
     print(report)
 
     print("Confusion Matrix:")
@@ -249,158 +374,66 @@ def evaluate_model(model, X_test, y_test, label_encoder):
     }
 
 
-# ---------------------------------
-# Single prediction helper
-# ---------------------------------
+def predict_one(
+    model,
+    feature_vector,
+    label_encoder
+):
 
-def predict_one(model, feature_vector, label_encoder):
-    """
-    Predict one sample from a single feature vector.
-    """
-    feature_vector = np.asarray(feature_vector, dtype=np.float32)
+    model.eval()
+
+    feature_vector = np.asarray(
+        feature_vector,
+        dtype=np.float32
+    )
 
     if feature_vector.ndim == 1:
         feature_vector = feature_vector.reshape(1, -1)
 
-    pred_encoded = model.predict(feature_vector)[0]
-    pred_label = label_encoder.inverse_transform([pred_encoded])[0]
+    feature_tensor = torch.tensor(
+        feature_vector,
+        dtype=torch.float32
+    ).to(DEVICE)
+
+    with torch.no_grad():
+
+        output = model(feature_tensor)
+
+        pred_encoded = torch.argmax(
+            output,
+            dim=1
+        ).cpu().numpy()[0]
+
+    pred_label = label_encoder.inverse_transform(
+        [pred_encoded]
+    )[0]
 
     return pred_label
-
-
-# ---------------------------------
-# Train or load flow
-# ---------------------------------
-
-def train_and_save_model(
-    X_train,
-    y_train,
-    label_encoder,
-    filename=MODEL_BUNDLE_PATH,
-    random_state=42
-):
-    """
-    Train a forest model and save it.
-    """
-    print("\n=== TRAINING FOREST MODEL ===")
-    model = train_random_forest(X_train, y_train, random_state=random_state)
-
-    metadata = {
-        "num_features": X_train.shape[1],
-        "num_classes": len(label_encoder.classes_)
-    }
-
-    save_model_bundle(
-        model=model,
-        label_encoder=label_encoder,
-        filename=filename,
-        model_name="RandomForest",
-        scaler=None,
-        metadata=metadata
-    )
-
-    return model
 
 
 def get_or_train_model(
     X_train,
     y_train,
     label_encoder,
-    use_saved_model=True,
+    use_saved_model=False,
     force_retrain_model=True,
-    filename=MODEL_BUNDLE_PATH,
-    random_state=42
+    epochs=200,
+    learning_rate=0.0003
 ):
-    """
-    Either load a saved model or train/save a new one.
-    """
-    if use_saved_model and not force_retrain_model and Path(filename).exists():
-        bundle = load_model_bundle(filename)
-        return bundle["model"], bundle["label_encoder"]
 
-    model = train_and_save_model(
+    input_dim = X_train.shape[1]
+
+    num_classes = len(
+        label_encoder.classes_
+    )
+
+    model = train_dnn(
         X_train=X_train,
         y_train=y_train,
-        label_encoder=label_encoder,
-        filename=filename,
-        random_state=random_state
+        input_dim=input_dim,
+        num_classes=num_classes,
+        epochs=epochs,
+        learning_rate=learning_rate
     )
 
     return model, label_encoder
-
-
-# ---------------------------------
-# Main
-# ---------------------------------
-
-def main():
-    """
-    Control flags:
-        use_cached_dataset:
-            True  -> load saved X/y if available
-            False -> rebuild from raw audio
-
-        force_rebuild_dataset:
-            True  -> ignore saved dataset and rebuild
-
-        use_saved_model:
-            True  -> load trained model if available
-            False -> always train fresh
-
-        force_retrain_model:
-            True  -> ignore saved model and retrain
-    """
-    use_cached_dataset = True
-    force_rebuild_dataset = True
-
-    use_saved_model = True
-    force_retrain_model = True
-
-    print("=== BUILDING / LOADING DATASET ===")
-    X, y = get_or_build_dataset(
-        use_cached_dataset=use_cached_dataset,
-        force_rebuild_dataset=force_rebuild_dataset,
-        target_sr=16000,
-        target_duration=2.0,
-        silence_threshold=500
-    )
-
-    print("X shape:", X.shape)
-    print("y shape:", y.shape)
-
-    y_encoded, label_encoder = encode_labels(y)
-    print_label_mapping(label_encoder)
-
-    X_train, X_test, y_train, y_test = split_dataset(
-        X,
-        y_encoded,
-        test_size=0.25,
-        random_state=42
-    )
-
-    summarize_split(X_train, X_test, y_train, y_test, label_encoder)
-
-    model, model_label_encoder = get_or_train_model(
-        X_train=X_train,
-        y_train=y_train,
-        label_encoder=label_encoder,
-        use_saved_model=use_saved_model,
-        force_retrain_model=force_retrain_model,
-        filename=MODEL_BUNDLE_PATH,
-        random_state=42
-    )
-
-    results = evaluate_model(model, X_test, y_test, model_label_encoder)
-
-    first_pred = model_label_encoder.inverse_transform([model.predict(X_test[:1])[0]])[0]
-    first_true = model_label_encoder.inverse_transform([y_test[0]])[0]
-
-    print("\n=== SAMPLE PREDICTION ===")
-    print("True label:", first_true)
-    print("Predicted label:", first_pred)
-
-    return model, model_label_encoder, results
-
-
-if __name__ == "__main__":
-    main()

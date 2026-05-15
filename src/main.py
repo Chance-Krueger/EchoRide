@@ -1,75 +1,69 @@
 from direction_model import (
-    build_model_dataset,
+    get_or_build_dataset,
     encode_labels,
-    print_label_mapping,
     split_dataset,
-    summarize_split,
-    train_random_forest,
-    evaluate_model,
-    predict_one
+    train_dnn
 )
 
-from vibration import (
-    get_vibration_pattern,
-    simulate_vibration
-)
-
-
-# Entry point: loads audio, runs algorithm, prints direction
+from sklearn.metrics import accuracy_score
+import torch
 
 
 def main():
-    print("=== ECHORIDE PIPELINE START ===")
 
-    # 1. Build dataset
-    print("\n=== BUILDING DATASET ===")
-    X, y = build_model_dataset(
+    print("=== ECHORIDE WAV2VEC + DNN PIPELINE START ===")
+
+    X, y = get_or_build_dataset(
+        use_cached_dataset=False,
+        force_rebuild_dataset=True,
         target_sr=16000,
-        target_duration=2.0,
-        silence_threshold=500
+        target_duration=2.0
     )
 
     print("X shape:", X.shape)
     print("y shape:", y.shape)
 
-    # 2. Encode labels
     y_encoded, label_encoder = encode_labels(y)
-    print_label_mapping(label_encoder)
 
-    # 3. Split dataset
     X_train, X_test, y_train, y_test = split_dataset(
         X,
         y_encoded,
-        test_size=0.25,
+        test_size=0.10,
         random_state=42
     )
 
-    summarize_split(X_train, X_test, y_train, y_test, label_encoder)
+    model = train_dnn(
+        X_train=X_train,
+        y_train=y_train,
+        input_dim=X_train.shape[1],
+        num_classes=len(label_encoder.classes_),
+        epochs=200,
+        learning_rate=0.0003
+    )
 
-    # 4. Train model
-    print("\n=== TRAINING MODEL ===")
-    model = train_random_forest(X_train, y_train, random_state=42)
+    model.eval()
 
-    # 5. Evaluate model
-    results = evaluate_model(model, X_test, y_test, label_encoder)
+    X_test_tensor = torch.tensor(
+        X_test,
+        dtype=torch.float32
+    )
 
-    # 6. Predict one sample from test set
-    print("\n=== SAMPLE PREDICTION ===")
-    sample_vector = X_test[0]
-    true_label = label_encoder.inverse_transform([y_test[0]])[0]
-    predicted_label = predict_one(model, sample_vector, label_encoder)
+    with torch.no_grad():
 
-    print("True label:     ", true_label)
-    print("Predicted label:", predicted_label)
+        outputs = model(X_test_tensor)
 
-    # 7. Map prediction to vibration pattern
-    print("\n=== VIBRATION MAPPING ===")
-    vibration_pattern = get_vibration_pattern(predicted_label)
+        predictions = torch.argmax(
+            outputs,
+            dim=1
+        ).numpy()
 
-    # 8. Simulate vibration output
-    simulate_vibration(vibration_pattern)
+    accuracy = accuracy_score(
+        y_test,
+        predictions
+    )
 
-    print("\n=== ECHORIDE PIPELINE COMPLETE ===")
+    print("\n=== FINAL RESULTS ===")
+    print("Accuracy:", accuracy)
 
 
 if __name__ == "__main__":

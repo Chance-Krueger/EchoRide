@@ -1,38 +1,38 @@
 from pathlib import Path
-from scipy.io import wavfile
-import soundfile as sf
 import librosa
 import numpy as np
+import random
 
-GLOABAL = 0
 
-# Noise reduction, filtering, normalization
+def load_audio_file(file_path, target_sr=None, mono=False):
 
-# Read one .wav file and return the actual waveform plus its sample rate.
-def load_audio_file(file_path):
     file_path = Path(file_path)
 
     if not file_path.exists():
         raise FileNotFoundError(f"Audio file not found: {file_path}")
 
-    if file_path.suffix.lower() != ".wav":
-        raise ValueError(f"Expected a .wav file, got: {file_path}")
+    audio, sample_rate = librosa.load(
+        file_path,
+        sr=target_sr,
+        mono=mono
+    )
 
-    sample_rate, audio = wavfile.read(file_path)
     return audio, sample_rate
 
 
-# Look at one loaded clip and understand what dealing with.
-def inspect_audio_properties(audio, sample_rate, file_path):
-    num_samples = len(audio)
-    duration = num_samples / sample_rate
+def inspect_audio_properties(audio, sample_rate):
 
     if audio.ndim == 1:
         channels = 1
-    else:
-        channels = audio.shape[1]
+        num_samples = len(audio)
 
-    info = {
+    else:
+        channels = audio.shape[0]
+        num_samples = audio.shape[-1]
+
+    duration = num_samples / sample_rate
+
+    return {
         "sample_rate": sample_rate,
         "num_samples": num_samples,
         "duration": duration,
@@ -40,58 +40,53 @@ def inspect_audio_properties(audio, sample_rate, file_path):
         "dtype": str(audio.dtype),
     }
 
-    return info
 
-# Make every clip use the same sample rate.
-def resample_audio(audio, original_sr, target_sr):
-    if original_sr == target_sr:
-        return audio, original_sr
-    
-    audio = audio.astype(np.float32)
+def convert_to_mono(audio):
+    return audio
 
-    resampled_audio = librosa.resample(
-        y=audio,
-        orig_sr=original_sr,
-        target_sr=target_sr
+
+def trim_silence(audio, top_db=30):
+
+    # Mono audio
+    if audio.ndim == 1:
+
+        trimmed_audio, _ = librosa.effects.trim(
+            audio,
+            top_db=top_db
+        )
+
+        return trimmed_audio
+
+    # Stereo audio
+    left_channel = audio[0]
+    right_channel = audio[1]
+
+    trimmed_left, _ = librosa.effects.trim(
+        left_channel,
+        top_db=top_db
     )
 
-    return resampled_audio, target_sr
+    trimmed_right, _ = librosa.effects.trim(
+        right_channel,
+        top_db=top_db
+    )
+
+    min_len = min(
+        len(trimmed_left),
+        len(trimmed_right)
+    )
+
+    trimmed_left = trimmed_left[:min_len]
+    trimmed_right = trimmed_right[:min_len]
+
+    return np.stack(
+        [trimmed_left, trimmed_right],
+        axis=0
+    )
 
 
-
-# Make sure every clip has one channel.
-def convert_to_mono(audio):
-    if audio.ndim == 1:
-        return audio
-    return audio.mean(axis=1)
-
-
-# Remove unnecessary quiet sections at the beginning and end.
-def trim_silence(audio, threshold):
-    global GLOABAL
-    # Use mono ONLY for detecting silence
-    if audio.ndim > 1:
-        mono = audio.mean(axis=1)
-    else:
-        mono = audio
-
-    abs_audio = np.abs(mono)
-    above_thresh = np.where(abs_audio > threshold)[0]
-
-    if len(above_thresh) == 0:
-        GLOABAL+= 1
-        print(GLOABAL)
-        return audio
-
-    start = above_thresh[0]
-    end = above_thresh[-1] + 1
-
-    return audio[start:end]
-
-
-# Put all clips on a similar amplitude scale.
 def normalize_audio(audio):
-    # Convert to float so division behaves correctly
+
     audio = audio.astype(np.float32)
 
     max_val = np.max(np.abs(audio))
@@ -99,71 +94,148 @@ def normalize_audio(audio):
     if max_val == 0:
         return audio
 
-    # normalized_audio
     return audio / max_val
 
 
-# Force every clip to have the same duration.
 def pad_or_crop_audio(audio, sample_rate, target_duration):
+
     target_length = int(target_duration * sample_rate)
-    current_length = len(audio)
 
-    # If shorter → pad with zeros at the end
-    if current_length < target_length:
-        amount_to_pad = target_length - current_length
-        return np.pad(audio, (0, amount_to_pad), mode='constant') # padded_audio
+    if audio.ndim == 1:
+        current_length = len(audio)
 
-    # If longer → crop to target length
-    if current_length > target_length:
-        return audio[:target_length] # cropped_audio
+        if current_length < target_length:
+            amount_to_pad = target_length - current_length
 
-    # Already correct length
-    return audio
+            return np.pad(
+                audio,
+                (0, amount_to_pad),
+                mode="constant"
+            )
 
+        return audio[:target_length]
 
-# Apply the full standardization pipeline to one clip.
-def preprocess_audio(file_path, target_sr, target_duration, silence_threshold=500):
+    else:
 
-    # 1. Load
-    audio, sample_rate = load_audio_file(file_path)
+        current_length = audio.shape[1]
 
-    # 2. Convert to mono
-    # audio = convert_to_mono(audio)
+        if current_length < target_length:
 
-    # 3. Trim silence BEFORE resampling (threshold is based on original amplitude)
-    audio = trim_silence(audio, threshold=silence_threshold)
+            amount_to_pad = target_length - current_length
 
-    # 4. Resample
-    audio, sample_rate = resample_audio(audio, sample_rate, target_sr)
+            return np.pad(
+                audio,
+                ((0, 0), (0, amount_to_pad)),
+                mode="constant"
+            )
 
-    # 5. Normalize to [-1, 1]
-    audio = normalize_audio(audio)
-
-    # 6. Pad or crop to fixed duration
-    audio = pad_or_crop_audio(audio, sample_rate, target_duration)
-
-    return audio, sample_rate
+        return audio[:, :target_length]
 
 
+# AUGMENTATION
+def add_noise(audio, noise_level=0.003):
 
-# Apply preprocessing to every file in dataset index.
-def preprocess_dataset(dataset, target_sr, target_duration, silence_threshold=500):
+    noise = np.random.randn(*audio.shape)
+
+    return (
+        audio + noise_level * noise
+    ).astype(np.float32)
+
+
+def random_gain(audio, min_gain=0.8, max_gain=1.2):
+
+    gain = random.uniform(min_gain, max_gain)
+
+    return (audio * gain).astype(np.float32)
+
+
+def random_shift(audio, max_shift=2000):
+
+    shift = np.random.randint(-max_shift, max_shift)
+
+    if audio.ndim == 1:
+        return np.roll(audio, shift)
+
+    return np.roll(audio, shift, axis=1)
+
+
+def preprocess_audio(
+    file_path,
+    target_sr=16000,
+    target_duration=None,
+    trim=True,
+    top_db=30,
+    normalize=True,
+    force_mono=False,
+    augment=False
+):
+
+    audio, sample_rate = load_audio_file(
+        file_path=file_path,
+        target_sr=target_sr,
+        mono=False
+    )
+
+    if force_mono:
+        audio = convert_to_mono(audio)
+
+    if trim:
+        audio = trim_silence(audio, top_db=top_db)
+
+    if normalize:
+        audio = normalize_audio(audio)
+
+    if augment:
+
+        if random.random() < 0.5:
+            audio = add_noise(audio)
+
+        if random.random() < 0.5:
+            audio = random_gain(audio)
+
+        if random.random() < 0.5:
+            audio = random_shift(audio)
+
+    if target_duration is not None:
+        audio = pad_or_crop_audio(
+            audio,
+            sample_rate,
+            target_duration
+        )
+
+    return audio.astype(np.float32), sample_rate
+
+
+def preprocess_dataset(
+    dataset,
+    target_sr=16000,
+    target_duration=None,
+    trim=True,
+    top_db=30,
+    normalize=True,
+    force_mono=False,
+    augment=True
+):
+
     processed_dataset = []
 
     for entry in dataset:
-        file_path = entry["file_path"]
-        label = entry["label"]
 
         processed_audio, processed_sr = preprocess_audio(
-            file_path=file_path,
+            file_path=entry["file_path"],
             target_sr=target_sr,
             target_duration=target_duration,
-            silence_threshold=silence_threshold
+            trim=trim,
+            top_db=top_db,
+            normalize=normalize,
+            force_mono=force_mono,
+            augment=augment
         )
 
         processed_entry = {
-            "file_path": file_path,
-            "label": label,
+            "file_path": entry["file_path"],
+            "original_label": entry.get("original_label"),
+            "label": entry["label"],
             "audio": processed_audio,
             "sample_rate": processed_sr
         }
@@ -171,54 +243,3 @@ def preprocess_dataset(dataset, target_sr, target_duration, silence_threshold=50
         processed_dataset.append(processed_entry)
 
     return processed_dataset
-
-
-
-def main():
-    file_path = "/Users/chancekrueger/Documents/GitHub/EchoRide/data/raw/FrontPass/FrontPass_L2R_HeavyWind.wav"
-
-    processed_audio, sr = preprocess_audio(
-        file_path=file_path,
-        target_sr=16000,
-        target_duration=2.0,
-        silence_threshold=500
-    )
-
-    raw_audio, raw_sr = load_audio_file(file_path)
-
-    print("Raw audio length:", len(raw_audio))
-
-
-    print("=== FINAL OUTPUT ===")
-    print("Sample rate:", sr)
-    print("Num samples:", len(processed_audio))
-    print("Duration:", len(processed_audio) / sr)
-    print("Max amplitude:", np.max(np.abs(processed_audio)))
-
-    # NEW: Charts
-    # plot_waveform(processed_audio, sr, "Processed Waveform")
-    # plot_spectrogram(processed_audio, sr, "Processed Audio Spectrogram")
-    # plot_mel_spectrogram(processed_audio, sr, "Processed Mel Spectrogram")
-
-
-
-
-
-    dataset = [
-        {"file_path": "data/raw/FrontPass/FrontPass_L2R_HeavyWind.wav", "label": "FrontPass"},
-        {"file_path": "data/raw/FrontPass/FrontPass_L2R_NC_Engine.wav", "label": "FrontPass"},
-    ]
-
-    processed = preprocess_dataset(
-        dataset,
-        target_sr=16000,
-        target_duration=2.0
-    )
-
-    print("\n=== DATASET RESULTS ===")
-    for entry in processed:
-        print(entry["file_path"], len(entry["audio"]), entry["sample_rate"])
-
-
-if __name__ == "__main__":
-    main()
