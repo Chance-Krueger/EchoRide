@@ -27,7 +27,7 @@ Current direction classes include:
 - RearCrash
 
 # Project Structure
-
+```
 EchoRide/
 ├── src/
 │   ├── guiApp.py
@@ -46,6 +46,7 @@ EchoRide/
 │   └── BikeAudioSim/
 ├── requirements.txt
 └── README.md
+```
 
 # Unity Simulation
 
@@ -237,8 +238,6 @@ Planned future improvements include:
 
 
 # Acknowledgments
-
-CSC 396 — University of Arizona — Spring 2026
 
 
 # License
