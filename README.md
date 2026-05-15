@@ -15,16 +15,13 @@ EchoRide uses a multi-stage simulation and machine learning pipeline:
 3. Audio recordings are preprocessed and standardized
 4. Wav2Vec2 audio embeddings are extracted
 5. A Deep Neural Network (DNN) classifier predicts vehicle direction
-6. 6. A simulated cyclist vibration alert is generated
+6. A simulated cyclist vibration alert is generated
 
 Current direction classes include:
-- FrontPass
-- RearPass
-- LeftPass
-- RightPass
-- LeftTurn
-- RightTurn
-- RearCrash
+- Front
+- Rear
+- Left
+- Right
 
 # Project Structure
 
@@ -82,15 +79,13 @@ Generated recordings are saved as WAV files and later processed through the Pyth
 
 # Direction Classes
 
-| Label | Description |
+| Final Class | Description |
 |---|---|
-| FrontPass | Vehicle passes in front of cyclist |
-| RearPass | Vehicle approaches from behind |
-| LeftPass | Vehicle passes on left side |
-| RightPass | Vehicle passes on right side |
-| LeftTurn | Left turning vehicle scenario |
-| RightTurn | Right turning vehicle scenario |
-| RearCrash | Rear collision inspired scenario |
+| Front | Vehicle movement occurring in front of the cyclist |
+| Back | Vehicle movement approaching from behind the cyclist |
+| Left | Vehicle movement occurring on the left side of the cyclist |
+| Right | Vehicle movement occurring on the right side of the cyclist |
+
 
 
 # Installation
@@ -149,14 +144,15 @@ GUI workflow:
 
 Note: the power button must be turned off after each prediction.
 
-Vibration Paterns:
-    RightTurn: 1 blink
-    LeftTurn: 2 blinks
-    FrontPass: 3 blinks
-    RearPass: 4 blinks
-    LeftPass: 5 blinks
-    RightPass: 6 blinks
-    RearCrash: rapid/continuous
+Vibration Patterns:
+- Front → smooth vibration pattern
+- Left → pulsing left side vibration
+- Right → pulsing right side vibration
+- Back → rapid rear alert bursts
+
+Each vibration pattern also varies in intensity and duration depending on the predicted directional hazard category.
+
+
 
 ## Generate Audio Using Unity
 
